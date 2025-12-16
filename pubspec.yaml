@@ -13,6 +13,8 @@ dependencies:
     sdk: flutter
 
   flutter_foreground_task: ^9.1.0   
+  android_alarm_manager_plus: ^5.0.0
+  shared_preferences: ^2.5.4
   cupertino_icons: ^1.0.8
 
 dev_dependencies:
