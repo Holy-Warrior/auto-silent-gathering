@@ -39,7 +39,17 @@ class SensorDatabase {
         id INTEGER PRIMARY KEY AUTOINCREMENT,
         created_at INTEGER NOT NULL,
         tag TEXT,
-        json_data TEXT NOT NULL
+        json_data TEXT NOT NULL,
+        timed_label TEXT
+      )
+    ''');
+
+    await db.execute('''
+      CREATE TABLE time_label (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        bundle_id INTEGER NOT NULL,
+        timestamp INTEGER NOT NULL,
+        label TEXT NOT NULL
       )
     ''');
   }
@@ -69,6 +79,24 @@ class SensorDatabase {
     });
   }
 
+  /// Insert a new time label
+  static Future<void> insertTimeLabel({
+    required int bundleId,
+    required int timestamp,
+    required String label,
+  }) async {
+    final db = await _database;
+    await db.insert(
+      'time_label',
+      {
+        'bundle_id': bundleId,
+        'timestamp': timestamp,
+        'label': label,
+      },
+      conflictAlgorithm: ConflictAlgorithm.abort,
+    );
+  }
+
   /// Get next unused bundle_id from sensor_samples
   static Future<int> getNextBundleId() async {
     final db = await _database;
@@ -78,7 +106,7 @@ class SensorDatabase {
   }
 
   /// Bundle sensor samples by unique bundle_id into sensor_bundles
-  /// After bundling, delete those rows
+  /// Include associated time_label data as JSON
   static Future<void> bundleAndClearSamples({String? tag}) async {
     final db = await _database;
 
@@ -109,6 +137,15 @@ class SensorDatabase {
 
         final jsonString = jsonEncode(sanitizedRows);
 
+        // Fetch associated time labels
+        final List<Map<String, dynamic>> timeLabels = await txn.query(
+          'time_label',
+          where: 'bundle_id = ?',
+          whereArgs: [bundleId],
+        );
+
+        final timeLabelJson = jsonEncode(timeLabels);
+
         // Insert into sensor_bundles
         await txn.insert(
           'sensor_bundles',
@@ -116,13 +153,19 @@ class SensorDatabase {
             'created_at': DateTime.now().millisecondsSinceEpoch,
             'tag': tag,
             'json_data': jsonString,
+            'timed_label': timeLabelJson,
           },
           conflictAlgorithm: ConflictAlgorithm.abort,
         );
 
-        // Delete bundled samples
+        // Delete bundled samples and associated time labels
         await txn.delete(
           'sensor_samples',
+          where: 'bundle_id = ?',
+          whereArgs: [bundleId],
+        );
+        await txn.delete(
+          'time_label',
           where: 'bundle_id = ?',
           whereArgs: [bundleId],
         );
