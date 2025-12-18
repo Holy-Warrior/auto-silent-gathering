@@ -1,10 +1,13 @@
 import 'dart:io';
+// import 'package:android_alarm_manager_plus/android_alarm_manager_plus.dart';
 import 'package:flutter_foreground_task/flutter_foreground_task.dart';
 import 'package:sensors_plus/sensors_plus.dart';
 import 'dart:async';
 import 'my_sensor_buffer.dart';
 import 'db/model_sensor_sample.dart';
 import 'db/my_db_helper.dart';
+import 'my_alarm_manager.dart';
+import 'my_alarm_manager_timings.dart';
 
 
 Future<void> askForegroundTaskPermissions() async {
@@ -76,9 +79,16 @@ class SensorTaskHandler extends TaskHandler {
   String _labelCurrent = 'Random';
   late final int _bundleId;
   bool _bundleIdAquired = false;
+  String _currentTag = "not_set";
+  late DateTime _currentTime;
+  Map<String, int> exceedingTimes = {"notify_loop":40};
 
   @override
   Future<void> onStart(DateTime timestamp, TaskStarter starter) async {
+    scheduleDailyForegroundRuns();
+    final result = await identifyCurrentTagWithTime();
+    _currentTag = result.currentTag;
+    _currentTime = result.now;
     _bundleId = await SensorDatabase.getNextBundleId();
     _bundleIdAquired = true;
   
@@ -99,6 +109,10 @@ class SensorTaskHandler extends TaskHandler {
     if (batch.isNotEmpty) {
       await SensorDatabase.insertBatch(batch, bundleId: _bundleId);
     }
+
+    if (minutesLeft(exceedingTimes['notify_loop']!, _currentTime)<=0){
+      closeForegroundService();
+    }
   }
 
   @override
@@ -114,6 +128,10 @@ class SensorTaskHandler extends TaskHandler {
       await FlutterForegroundTask.updateService(notificationText: 'Recording [$_labelCurrent] Sensor Data');
       await SensorDatabase.insertTimeLabel
       (bundleId: _bundleId, timestamp: timestamp, label: _labelCurrent,);
+
+      if (_labelCurrent== _labelNimaz && minutesLeft(exceedingTimes['notify_loop']!, _currentTime) <= 20){
+        exceedingTimes['notify_loop']= 20;
+      }
     }
   }
 
@@ -129,7 +147,59 @@ class SensorTaskHandler extends TaskHandler {
       await SensorDatabase.insertBatch(batch, bundleId: _bundleId);
     }
 
-    await SensorDatabase.bundleAndClearSamples(tag: 'not_set');
+    await SensorDatabase.bundleAndClearSamples(tag: _currentTag);
   }
 
 }
+
+
+
+int minutesLeft(int finishLineMinutes, DateTime currentTime) {
+  final DateTime finishLineTime =
+      currentTime.add(Duration(minutes: finishLineMinutes));
+
+  final Duration remaining =
+      finishLineTime.difference(DateTime.now());
+
+  if (remaining.isNegative) {
+    return 0;
+  }
+
+  return remaining.inMinutes;
+}
+
+
+
+
+Future<({String currentTag, DateTime now})> identifyCurrentTagWithTime() async {
+  final List<String> tags = ['Fajar', 'Zuhar', 'Asar', 'Magrib', 'Isha'];
+  final List<List<int>> timings =
+      await MyAlarmManagerData.dailyTimings();
+
+  final DateTime now = DateTime.now();
+  final int nowMinutes = now.hour * 60 + now.minute;
+
+  final timingMinutes = timings
+      .map((t) => t[0] * 60 + t[1])
+      .toList();
+
+  int selectedIndex = -1;
+
+  for (int i = 0; i < timingMinutes.length; i++) {
+    if (timingMinutes[i] <= nowMinutes) {
+      selectedIndex = i;
+    } else {
+      break;
+    }
+  }
+
+  if (selectedIndex == -1) {
+    selectedIndex = timingMinutes.length - 1;
+  }
+
+  return (
+    currentTag: tags[selectedIndex],
+    now: now,
+  );
+}
+

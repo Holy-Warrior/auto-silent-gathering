@@ -16,11 +16,9 @@ class MyApp extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
-      title: 'Sensor Foreground',
-      theme: ThemeData(
-        colorScheme: .fromSeed(seedColor: Colors.deepPurple),
-      ),
-      home: const MyHomePage(title: 'Sensor Foreground Notification'),
+      title: 'Nimaz Data Collection',
+      theme: ThemeData(colorScheme: .fromSeed(seedColor: Colors.deepPurple)),
+      home: const MyHomePage(title: 'Nimaz Data Collection'),
     );
   }
 }
@@ -34,49 +32,134 @@ class MyHomePage extends StatefulWidget {
 }
 
 class _MyHomePageState extends State<MyHomePage> {
-  List<List<int>>? timings;
-  
+  final List<String> _labels = ['Fajar', 'Zuhar', 'Asar', 'Magrib', 'Isha'];
+  late Future<List<TimeOfDay>> _timingsFuture;
+  List<TimeOfDay> _displayTimes = [];
+
   @override
   void initState() {
     super.initState();
-    _loadTimings();
+    _timingsFuture = _loadTimings();
+    askForegroundTaskPermissions().then((onValue){scheduleDailyForegroundRuns();});
   }
 
-  Future<void> _loadTimings() async {
-    final loadedTimings = await MyAlarmManagerData.dailyTimings();
-    setState(() {
-      timings = loadedTimings;
-    });
+  Future<List<TimeOfDay>> _loadTimings() async {
+    final loaded = await MyAlarmManagerData.dailyTimings();
+    return loaded.map(_toDisplayTime).toList();
+  }
+
+  TimeOfDay _toDisplayTime(List<int> stored) {
+    final dt = DateTime(0, 1, 1, stored[0], stored[1]).add(const Duration(minutes: 15));
+    return TimeOfDay(hour: dt.hour, minute: dt.minute);
+  }
+
+  List<int> _toStoredTime(TimeOfDay picked) {
+    final dt = DateTime(0, 1, 1, picked.hour, picked.minute).subtract(const Duration(minutes: 15));
+    return [dt.hour, dt.minute];
+  }
+
+  void saveNewTimeFromFormAndScheduleAlarams() async {
+    final storedTimes = _displayTimes.map(_toStoredTime).toList();
+
+    await MyAlarmManagerData.dailyTimingsModify(storedTimes);
+
+    await askForegroundTaskPermissions();
+    await scheduleDailyForegroundRuns();
   }
 
   @override
-Widget build(BuildContext context) {
-  return Scaffold(
-    appBar: AppBar(
-      backgroundColor: Theme.of(context).colorScheme.inversePrimary,
-      title: Text(widget.title),
-    ),
-    body: Center(
-      child: timings == null
-          ? const CircularProgressIndicator()
-          : Column(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                ElevatedButton(
-                  onPressed: () async {
-                    await askForegroundTaskPermissions();
-                    await scheduleDailyForegroundRuns();
-                  },
-                  child: const Text('Schedule Foreground service'),
-                ),
-                const Text('Alarm Manager Timings:'),
-                for (final t in timings!)
-                  Text(
-                    '${t[0].toString().padLeft(2, '0')}:${t[1].toString().padLeft(2, '0')}',
-                  ),
-              ],
-            ),
+  Widget build(BuildContext context) {
+    return Scaffold(
+      appBar: AppBar(
+        backgroundColor: Theme.of(context).colorScheme.inversePrimary,
+        title: Text(widget.title),
+      ),
+
+      body: FutureBuilder<List<TimeOfDay>>(
+        future: _timingsFuture,
+        builder: (context, snapshot) {
+          if (snapshot.connectionState == ConnectionState.waiting) {
+            return const Center(child: CircularProgressIndicator());
+          }
+
+          if (snapshot.hasError) {
+            return Center(
+              child: Text('Error loading timings: ${snapshot.error}'),
+            );
+          }
+
+          // Data is ready
+          _displayTimes = snapshot.data!;
+
+          return Column(
+            children: [
+              const Text(
+                'Nimaz Timings',
+                style: TextStyle(fontSize: 22, fontWeight: FontWeight.bold),
+              ),
+
+              NimazTimingsForm(
+                labels: _labels,
+                times: _displayTimes,
+                onTimePicked: (index, newTime) {
+                  setState(() {
+                    _displayTimes[index] = newTime;
+                  });
+                },
+              ),
+
+              ElevatedButton(
+                onPressed: saveNewTimeFromFormAndScheduleAlarams,
+                child: const Text('Save Jamah Timings'),
+              ),
+            ],
+          );
+        },
       ),
     );
+  }
+}
+
+class NimazTimingsForm extends StatelessWidget {
+  final List<String> labels;
+  final List<TimeOfDay> times;
+  final void Function(int index, TimeOfDay newTime) onTimePicked;
+
+  const NimazTimingsForm({
+    super.key,
+    required this.labels,
+    required this.times,
+    required this.onTimePicked,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Column(
+      children: List.generate(labels.length, (i) {
+        return ListTile(
+          title: Text(labels[i]),
+          trailing: TextButton(
+            child: Text(_format12h(times[i])),
+            onPressed: () async {
+              final picked = await showTimePicker(
+                context: context,
+                initialTime: times[i],
+              );
+
+              if (picked != null) {
+                onTimePicked(i, picked);
+              }
+            },
+          ),
+        );
+      }),
+    );
+  }
+
+  String _format12h(TimeOfDay time) {
+    final hour = time.hourOfPeriod == 0 ? 12 : time.hourOfPeriod;
+    final minute = time.minute.toString().padLeft(2, '0');
+    final period = time.period == DayPeriod.am ? 'AM' : 'PM';
+    return '$hour:$minute $period';
   }
 }
