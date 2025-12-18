@@ -3,6 +3,7 @@ import 'my_alarm_manager.dart';
 import 'my_foreground_tasks.dart';
 import 'my_alarm_manager_timings.dart';
 import 'package:android_alarm_manager_plus/android_alarm_manager_plus.dart';
+import 'widgets/widget_github_release_checker.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -93,6 +94,12 @@ class _MyHomePageState extends State<MyHomePage> {
 
           return Column(
             children: [
+              WidgetGitReleaseChecker(
+                user: 'Holy-Warrior',
+                repo: 'auto-silent-gathering',
+                currentRelease: 'v1.0.0',
+                filterOutPreRelease: true,
+              ),
               const Text(
                 'Nimaz Timings',
                 style: TextStyle(fontSize: 22, fontWeight: FontWeight.bold),
