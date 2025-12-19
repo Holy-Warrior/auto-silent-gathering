@@ -1,3 +1,4 @@
+// lib\my_alarm_manager_timings.dart
 import 'package:shared_preferences/shared_preferences.dart';
 import 'dart:convert';
 
@@ -6,11 +7,11 @@ class MyAlarmManagerData {
   // Varibales
   static int alarmBaseId = 1000;
   static const List<List<int>> _defaultTimings = [
-    [6, 20], // [hour, minute]
-    [1, 30],
-    [4, 0],
-    [5, 13],
-    [7, 15],
+    [6, 5], // [hour, minute]
+    [13, 15],
+    [15, 45],
+    [16, 58],
+    [19, 0],
   ];
   static const String _key = 'daily_timings';
 

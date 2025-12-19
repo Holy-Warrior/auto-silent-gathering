@@ -8,7 +8,7 @@
     <uses-permission android:name="android.permission.RECEIVE_BOOT_COMPLETED" />
 <!-- HolyWarrior.END.permissions -->
     <application
-        android:label="motion_test"
+        android:label="Nimaz Data Gathering"
         android:name="${applicationName}"
         android:icon="@mipmap/ic_launcher">
 <!-- HolyWarrior.START.service -->

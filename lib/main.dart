@@ -1,3 +1,4 @@
+// lib/main.dart
 import 'package:flutter/material.dart';
 import 'my_alarm_manager.dart';
 import 'my_foreground_tasks.dart';
@@ -146,7 +147,7 @@ class NimazTimingsForm extends StatelessWidget {
         return ListTile(
           title: Text(labels[i]),
           trailing: TextButton(
-            child: Text(_format12h(times[i])),
+            child: Text(_format12h(context, times[i])),
             onPressed: () async {
               final picked = await showTimePicker(
                 context: context,
@@ -163,10 +164,8 @@ class NimazTimingsForm extends StatelessWidget {
     );
   }
 
-  String _format12h(TimeOfDay time) {
-    final hour = time.hourOfPeriod == 0 ? 12 : time.hourOfPeriod;
-    final minute = time.minute.toString().padLeft(2, '0');
-    final period = time.period == DayPeriod.am ? 'AM' : 'PM';
-    return '$hour:$minute $period';
+  String _format12h(BuildContext context, TimeOfDay time) {
+    final localizations = MaterialLocalizations.of(context);
+    return localizations.formatTimeOfDay(time, alwaysUse24HourFormat: false);
   }
 }
