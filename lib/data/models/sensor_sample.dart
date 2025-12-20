@@ -1,4 +1,4 @@
-// lib\db\model_sensor_sample.dart
+// lib\data\models\sensor_sample.dart
 class SensorSample {
   final int timestamp; // unix millis
   final String type;

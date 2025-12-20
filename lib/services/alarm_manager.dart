@@ -1,7 +1,7 @@
-// lib\my_alarm_manager_timings.dart
+// lib\services\alarm_manager.dart
 import 'package:android_alarm_manager_plus/android_alarm_manager_plus.dart';
-import 'my_foreground_tasks.dart';
-import 'my_alarm_manager_timings.dart';
+import 'foreground/foreground_service.dart';
+import '../data/prefs.dart';
 
 @pragma('vm:entry-point')
 void alarmCallback() async {
@@ -11,7 +11,7 @@ void alarmCallback() async {
 Future<void> scheduleDailyForegroundRuns() async {
   /* Provide Permissions before running */
   final now = DateTime.now();
-  final dailyTimings = await MyAlarmManagerData.dailyTimings();
+  final dailyTimings = await Prefs.Alarms.getTimings();
 
   for (int i = 0; i<5; i++) {
     final clockHM = dailyTimings[i];
@@ -22,7 +22,7 @@ Future<void> scheduleDailyForegroundRuns() async {
       scheduled = scheduled.add(const Duration(days: 1));
     }
     await AndroidAlarmManager.oneShotAt
-      (scheduled, MyAlarmManagerData.alarmBaseId +i, alarmCallback,
+      (scheduled, Prefs.Alarms.alarmBaseId +i, alarmCallback,
       exact: true, wakeup: true, rescheduleOnReboot: true);
   }
 }
