@@ -1,6 +1,6 @@
 // lib\my_sensor_buffer.dart
 import 'dart:async';
-import 'db/model_sensor_sample.dart';
+import 'package:motion_test/data/models/sensor_sample.dart';
 
 /// High-frequency safe sensor buffer using atomic swap.
 class SensorBuffer<T extends SensorSample> {
