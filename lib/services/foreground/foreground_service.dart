@@ -1,4 +1,8 @@
+<<<<<<< HEAD
 // lib\services\foreground\foreground_service.dart
+=======
+// lib\my_foreground_tasks.dart
+>>>>>>> 05df9a8784000fe5cd4c6effe305385eb36d8d54
 import 'dart:io';
 import 'package:flutter_foreground_task/flutter_foreground_task.dart';
 import 'sensor_task_handler/sensor_task_handler.dart';

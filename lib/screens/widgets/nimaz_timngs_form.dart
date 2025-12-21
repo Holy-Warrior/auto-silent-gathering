@@ -1,6 +1,12 @@
+<<<<<<< HEAD
 // lib\screens\widgets\nimaz_timngs_form.dart
 import 'package:flutter/material.dart';
 
+=======
+import 'package:flutter/material.dart';
+
+
+>>>>>>> 05df9a8784000fe5cd4c6effe305385eb36d8d54
 class NimazTimingsForm extends StatelessWidget {
   final List<String> labels;
   final List<TimeOfDay> times;

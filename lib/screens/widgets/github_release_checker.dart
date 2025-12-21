@@ -1,4 +1,8 @@
+<<<<<<< HEAD
 // lib\screens\widgets\github_release_checker.dart
+=======
+// lib\widgets\github_release_checker.dart
+>>>>>>> 05df9a8784000fe5cd4c6effe305385eb36d8d54
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
 import 'dart:convert';

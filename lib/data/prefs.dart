@@ -1,4 +1,7 @@
+<<<<<<< HEAD
 // lib\data\prefs.dart
+=======
+>>>>>>> 05df9a8784000fe5cd4c6effe305385eb36d8d54
 // ignore_for_file: unused_element
 import 'dart:convert';
 import 'package:shared_preferences/shared_preferences.dart';

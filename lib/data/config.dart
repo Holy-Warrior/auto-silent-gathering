@@ -1,4 +1,8 @@
+<<<<<<< HEAD
 // lib\data\config.dart
+=======
+
+>>>>>>> 05df9a8784000fe5cd4c6effe305385eb36d8d54
 class Config {
 
   static const List<List<int>> defaultTimings = [

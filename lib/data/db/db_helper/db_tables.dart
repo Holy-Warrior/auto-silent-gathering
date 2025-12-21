@@ -1,4 +1,8 @@
+<<<<<<< HEAD
 // lib\data\db\db_helper\db_tables.dart
+=======
+// lib/db/db_helper/db_tables.dart
+>>>>>>> 05df9a8784000fe5cd4c6effe305385eb36d8d54
 import 'package:sqflite/sqflite.dart';
 
 class DBTables {

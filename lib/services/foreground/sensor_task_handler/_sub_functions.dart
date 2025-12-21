@@ -1,4 +1,7 @@
+<<<<<<< HEAD
 // lib\services\foreground\sensor_task_handler\_sub_functions.dart
+=======
+>>>>>>> 05df9a8784000fe5cd4c6effe305385eb36d8d54
 import 'package:motion_test/data/prefs.dart';
 
 Future<({String currentTag, DateTime now})> identifyCurrentTagWithTime() async {

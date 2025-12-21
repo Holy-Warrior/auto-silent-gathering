@@ -1,4 +1,7 @@
+<<<<<<< HEAD
 // lib\screens\home_screen.dart
+=======
+>>>>>>> 05df9a8784000fe5cd4c6effe305385eb36d8d54
 import 'package:flutter/material.dart';
 import '../services/foreground/foreground_service.dart';
 import '../services/alarm_manager.dart';

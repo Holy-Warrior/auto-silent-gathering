@@ -1,7 +1,13 @@
+<<<<<<< HEAD
 // lib\services\foreground\sensor_task_handler\sensor_task_handler.dart
 import 'dart:async';
 import 'package:motion_test/data/models/sensor_sample.dart';
 import 'package:motion_test/data/db/sensor_db_controller.dart';
+=======
+import 'dart:async';
+import 'package:motion_test/data/models/sensor_sample.dart';
+import 'package:motion_test/data/db/sensor_database.dart';
+>>>>>>> 05df9a8784000fe5cd4c6effe305385eb36d8d54
 import 'package:motion_test/services/alarm_manager.dart';
 import 'sensor_buffer.dart';
 import 'package:sensors_plus/sensors_plus.dart';
@@ -34,7 +40,11 @@ class SensorTaskHandler extends TaskHandler {
     final result = await identifyCurrentTagWithTime();
     _currentTag = result.currentTag;
     _currentTime = result.now;
+<<<<<<< HEAD
     _bundleId = await SensorDbController.getNextBundleId();
+=======
+    _bundleId = await SensorDatabase.getNextBundleId();
+>>>>>>> 05df9a8784000fe5cd4c6effe305385eb36d8d54
     _bundleIdAquired = true;
   
     // Subscribe to sensors
@@ -55,7 +65,11 @@ class SensorTaskHandler extends TaskHandler {
   @override
   Future<void> onRepeatEvent(DateTime timestamp) async {
     final batch = await buffer.takeAll();
+<<<<<<< HEAD
     if (batch.isNotEmpty) await SensorDbController.insertBatch(batch, bundleId: _bundleId);
+=======
+    if (batch.isNotEmpty) await SensorDatabase.insertBatch(batch, bundleId: _bundleId);
+>>>>>>> 05df9a8784000fe5cd4c6effe305385eb36d8d54
 
     if (minutesLeft(exceedingTimes['notify_loop']!, _currentTime) <=0 ) {
       FlutterForegroundTask.stopService();
@@ -73,7 +87,11 @@ class SensorTaskHandler extends TaskHandler {
       else {_labelCurrent = _labelRandom;}
 
       await FlutterForegroundTask.updateService(notificationText: 'Recording [$_labelCurrent] Sensor Data');
+<<<<<<< HEAD
       await SensorDbController.insertTimeLabel
+=======
+      await SensorDatabase.insertTimeLabel
+>>>>>>> 05df9a8784000fe5cd4c6effe305385eb36d8d54
       (bundleId: _bundleId, timestamp: timestamp, label: _labelCurrent,);
 
       if (_labelCurrent== _labelNimaz && minutesLeft(exceedingTimes['notify_loop']!, _currentTime) <= 20){
@@ -91,10 +109,17 @@ class SensorTaskHandler extends TaskHandler {
 
     final batch = await buffer.takeAll();
     if (batch.isNotEmpty) {
+<<<<<<< HEAD
       await SensorDbController.insertBatch(batch, bundleId: _bundleId);
     }
 
     await SensorDbController.bundleAndClearSamples(tag: _currentTag);
+=======
+      await SensorDatabase.insertBatch(batch, bundleId: _bundleId);
+    }
+
+    await SensorDatabase.bundleAndClearSamples(tag: _currentTag);
+>>>>>>> 05df9a8784000fe5cd4c6effe305385eb36d8d54
   }
 
 }
