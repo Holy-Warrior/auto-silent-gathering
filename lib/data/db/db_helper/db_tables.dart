@@ -10,9 +10,9 @@ class DBTables {
         id INTEGER PRIMARY KEY AUTOINCREMENT,
         timestamp INTEGER NOT NULL,
         type TEXT NOT NULL,
-        x REAL NOT NULL,
-        y REAL NOT NULL,
-        z REAL NOT NULL,
+        x REAL,
+        y REAL,
+        z REAL,
         bundle_id INTEGER
       )
     ''');
