@@ -25,17 +25,19 @@ class SensorTaskHandler extends TaskHandler {
   late final int _bundleId;
   bool _bundleIdAquired = false;
   String _currentTag = "not_set";
-  late DateTime _currentTime;
-  Map<String, int> exceedingTimes = {"notify_loop":40};
+  late DateTime _serviceStartTime;
+  int notifyLoop= 40;
 
   @override
   Future<void> onStart(DateTime timestamp, TaskStarter starter) async {
     scheduleDailyForegroundRuns();
     final result = await identifyCurrentTagWithTime();
     _currentTag = result.currentTag;
-    _currentTime = result.now;
+    _serviceStartTime = result.startTime;
     _bundleId = await SensorDbController.getNextBundleId();
     _bundleIdAquired = true;
+
+    await FlutterForegroundTask.updateService(notificationText: 'Recording [$_labelCurrent] Sensor Data for [$_currentTag]');
   
     // Subscribe to sensors
     _accSub = accelerometerEventStream(samplingPeriod: SensorInterval.fastestInterval)
@@ -57,7 +59,7 @@ class SensorTaskHandler extends TaskHandler {
     final batch = await buffer.takeAll();
     if (batch.isNotEmpty) await SensorDbController.insertBatch(batch, bundleId: _bundleId);
 
-    if (minutesLeft(exceedingTimes['notify_loop']!, _currentTime) <=0 ) {
+    if (minutesLeft(notifyLoop, _serviceStartTime) <=0 ) {
       FlutterForegroundTask.stopService();
     }
   }
@@ -72,12 +74,22 @@ class SensorTaskHandler extends TaskHandler {
       if (_labelCurrent == _labelRandom) {_labelCurrent = _labelNimaz;}
       else {_labelCurrent = _labelRandom;}
 
-      await FlutterForegroundTask.updateService(notificationText: 'Recording [$_labelCurrent] Sensor Data');
+      await FlutterForegroundTask.updateService(notificationText: 'Recording [$_labelCurrent] Sensor Data for [$_currentTag]');
       await SensorDbController.insertTimeLabel
       (bundleId: _bundleId, timestamp: timestamp, label: _labelCurrent,);
 
-      if (_labelCurrent== _labelNimaz && minutesLeft(exceedingTimes['notify_loop']!, _currentTime) <= 20){
-        exceedingTimes['notify_loop']= 20;
+      final remainingMinutesLeft = minutesLeft(notifyLoop, _serviceStartTime);
+      if (_labelCurrent== _labelNimaz){
+        if (remainingMinutesLeft <= 20) notifyLoop= 20;
+
+        final minutesToNextNimaz = await minutesUntilNextNimaz();
+        final remaining =
+            minutesLeft(notifyLoop, _serviceStartTime); // remaining time of current service
+        final requiredMinutes = minutesToNextNimaz + 5; // we must survive until next Nimaz (+ 5 min buffer)
+        if (remaining < requiredMinutes) {
+          notifyLoop += (requiredMinutes - remaining);
+        }
+
       }
     }
   }

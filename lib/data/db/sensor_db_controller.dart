@@ -11,6 +11,12 @@ class SensorDbController {
   static Future<void> close() async => await DBInit.instance.close();
 
 
+  static double? nanToNull(double v) {
+    if (v.isNaN || v.isInfinite) return null;
+    return v;
+  }
+
+
   /// Insert a new time label
   static Future<void> insertTimeLabel({
     required int bundleId,
@@ -25,7 +31,7 @@ class SensorDbController {
         'timestamp': timestamp,
         'label': label,
       },
-      conflictAlgorithm: ConflictAlgorithm.abort,
+      conflictAlgorithm: ConflictAlgorithm.ignore,
     );
   }
 
@@ -44,12 +50,12 @@ class SensorDbController {
           {
             'timestamp': s.timestamp,
             'type': s.type,
-            'x': s.x,
-            'y': s.y,
-            'z': s.z,
+            'x': nanToNull(s.x),
+            'y': nanToNull(s.y),
+            'z': nanToNull(s.z),
             'bundle_id': bundleId,
           },
-          conflictAlgorithm: ConflictAlgorithm.abort,
+          conflictAlgorithm: ConflictAlgorithm.ignore, // or ignore
         );
       }
       await batch.commit(noResult: true);
@@ -116,7 +122,7 @@ class SensorDbController {
             'json_data': jsonString,
             'timed_label': timeLabelJson,
           },
-          conflictAlgorithm: ConflictAlgorithm.abort,
+          conflictAlgorithm: ConflictAlgorithm.ignore,
         );
 
         // Delete bundled samples and associated time labels
