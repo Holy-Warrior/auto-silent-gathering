@@ -5,6 +5,7 @@ import '../services/alarm_manager.dart';
 import 'widgets/github_release_checker.dart';
 import 'widgets/nimaz_timngs_form.dart';
 import '../data/prefs.dart';
+import 'package:motion_test/data/config.dart';
 
 
 class HomeScreen extends StatefulWidget {
@@ -80,7 +81,7 @@ class _HomeScreenState extends State<HomeScreen> {
               WidgetGitReleaseChecker(
                 user: 'Holy-Warrior',
                 repo: 'auto-silent-gathering',
-                currentRelease: 'v1.0.0',
+                currentRelease: Config.currentGitReleaseVersion,
                 filterOutPreRelease: true,
               ),
               const Text(
