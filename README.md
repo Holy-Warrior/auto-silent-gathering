@@ -2,7 +2,7 @@
 
 A Flutter-based Android foreground service for **continuous, time-aware motion sensor data collection**, designed around **Nimaz (prayer) schedules** with strict lifecycle guarantees.
 
-The system prioritizes **correct execution windows**, **predictable shutdown**, and **data integrity**, even under dynamic label changes and alarm overlaps.
+The system prioritizes **correct execution windows**, **predictable shutdown**, and **data integrity**, even under dynamic label changes, alarm overlaps, and app/process crashes.
 
 ---
 
@@ -12,6 +12,7 @@ The system prioritizes **correct execution windows**, **predictable shutdown**, 
 - Nimaz periods receive **focused, bounded data**
 - Services **never overrun** into the next scheduled alarm
 - All lifecycle decisions are **time-based, not counter-based**
+- **Crash recovery** preserves partially collected session state
 
 ---
 
@@ -20,7 +21,7 @@ The system prioritizes **correct execution windows**, **predictable shutdown**, 
 
 ---
 
-## 🧩 Architecture (v1.4.0)
+## 🧩 Architecture (v2.1.0)
 
 ### UI Layer
 
@@ -47,12 +48,13 @@ The system prioritizes **correct execution windows**, **predictable shutdown**, 
 
 - `Prefs.Alarms`
 - Stores **5 Nimaz timings** in 24-hour `[hour, minute]` format
+- `_SensorTask` snapshot **preserves task state** on crash (consume-once)
 
 #### SQLite (sqflite)
 
 Tables:
 
-- `sensor_samples`
+- `sensor_samples` (now includes `sampling_rate`)
 - `time_label`
 - `sensor_bundles`
 
@@ -62,7 +64,7 @@ Controlled via:
 - `DBTables`
 - `SensorDbController`
 
-All writes are **batched** and finalized during service teardown.
+All writes are **batched** and finalized during service teardown. **DB migration** preserves data from previous versions (v2 → v3).
 
 ---
 
@@ -84,9 +86,11 @@ All writes are **batched** and finalized during service teardown.
 Responsibilities:
 
 - Starts accelerometer, gyroscope, user-accelerometer, and magnetometer
+- Supports **multi-rate sampling** (`fastest`, `game`)
 - Buffers sensor samples in memory
 - Periodically flushes to SQLite
 - Supports notification button-based label switching
+- **Crash recovery:** saves state only if stop was unintentional
 - Enforces **strict lifecycle guarantees**
 - Performs final bundling on service destruction
 
@@ -98,7 +102,20 @@ The foreground service lifecycle is governed by **absolute timestamps**, not cou
 
 #### Default Rules
 
-- **Maximum runtime:** 40 minutes
-- Lifecycle is controlled by a single variable:
-  ```dart
+- **Maximum runtime:** 40 minutes (adjustable per session)
+- Lifecycle is controlled by:
+```dart
   DateTime _plannedStopTime
+  bool _intentionalStop
+````
+
+* **Nimaz label rules:**
+
+  * Minimum 20 minutes per session
+  * Stop 5 minutes before next Nimaz
+
+* **Crash handling:**
+
+  * If service terminates unexpectedly, session state is persisted
+  * On next start, service resumes previous session seamlessly
+

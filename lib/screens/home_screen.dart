@@ -50,6 +50,16 @@ class _HomeScreenState extends State<HomeScreen> {
 
     await askForegroundTaskPermissions();
     await scheduleDailyForegroundRuns();
+
+    // Show Snackbar confirmation
+    if (mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Jamah timings saved successfully!'),
+          duration: Duration(seconds: 2),
+        ),
+      );
+    }
   }
 
   @override
