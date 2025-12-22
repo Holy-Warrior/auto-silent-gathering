@@ -1,4 +1,4 @@
-// lib\data\db\db_helper\db_tables.dart
+// lib/data/db/db_helper/db_tables.dart
 import 'package:sqflite/sqflite.dart';
 
 class DBTables {
@@ -13,6 +13,7 @@ class DBTables {
         x REAL,
         y REAL,
         z REAL,
+        sampling_rate TEXT NOT NULL,
         bundle_id INTEGER
       )
     ''');

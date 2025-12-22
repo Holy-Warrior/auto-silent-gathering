@@ -50,12 +50,13 @@ class SensorDbController {
           {
             'timestamp': s.timestamp,
             'type': s.type,
+            'sampling_rate': s.samplingRate,
             'x': nanToNull(s.x),
             'y': nanToNull(s.y),
             'z': nanToNull(s.z),
             'bundle_id': bundleId,
           },
-          conflictAlgorithm: ConflictAlgorithm.ignore, // or ignore
+          conflictAlgorithm: ConflictAlgorithm.ignore,
         );
       }
       await batch.commit(noResult: true);

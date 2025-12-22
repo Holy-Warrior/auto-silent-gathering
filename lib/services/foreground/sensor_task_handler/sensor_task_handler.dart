@@ -1,12 +1,15 @@
 // lib/services/foreground/sensor_task_handler/sensor_task_handler.dart
 
 import 'dart:async';
-import 'package:motion_test/data/models/sensor_sample.dart';
-import 'package:motion_test/data/db/sensor_db_controller.dart';
-import 'package:motion_test/services/alarm_manager.dart';
-import 'sensor_buffer.dart';
-import 'package:sensors_plus/sensors_plus.dart';
+
 import 'package:flutter_foreground_task/flutter_foreground_task.dart';
+import 'package:motion_test/data/db/sensor_db_controller.dart';
+import 'package:motion_test/data/models/sensor_sample.dart';
+import 'package:motion_test/data/models/sensor_task_state.dart';
+import 'package:motion_test/data/prefs.dart';
+import 'package:motion_test/services/alarm_manager.dart';
+
+import 'sensor_buffer.dart';
 import '_sub_functions.dart';
 
 @pragma('vm:entry-point')
@@ -15,83 +18,70 @@ void startCallback() {
 }
 
 class SensorTaskHandler extends TaskHandler {
-  StreamSubscription<AccelerometerEvent>? _accSub;
-  StreamSubscription<GyroscopeEvent>? _gyroSub;
-  StreamSubscription<UserAccelerometerEvent>? _userAccSub;
-  StreamSubscription<MagnetometerEvent>? _magSub;
-
+  // ───────── Sensors ─────────
+  late Map<String, Map<String, StreamSubscription>> _sensorSubs;
   final SensorBuffer<SensorSample> buffer = SensorBuffer<SensorSample>();
 
+  // ───────── Labels ─────────
   static const String _labelRandom = 'Random';
   static const String _labelNimaz = 'Nimaz';
 
   String _labelCurrent = _labelRandom;
+  String get _labelEmoji => _labelCurrent == _labelNimaz ? '🕌' : '';
 
-  late final int _bundleId;
+  // ───────── Bundle ─────────
+  late int _bundleId;
   bool _bundleIdAquired = false;
 
+  // ───────── Lifecycle ─────────
   String _currentTag = 'not_set';
-  late DateTime _serviceStartTime;
-
+  // late DateTime _serviceStartTime;
   late DateTime _plannedStopTime;
+  bool _intentionalStop = false;
 
+
+  // ─────────────────────────────
+  // START
+  // ─────────────────────────────
   @override
   Future<void> onStart(DateTime timestamp, TaskStarter starter) async {
     scheduleDailyForegroundRuns();
 
+    // ── Tag & time context
     final result = await identifyCurrentTagWithTime();
     _currentTag = result.currentTag;
-    _serviceStartTime = result.startTime;
+    // _serviceStartTime = result.startTime;
 
-    _bundleId = await SensorDbController.getNextBundleId();
-    _bundleIdAquired = true;
+    // ── Restore previous task state (consume-once)
+    final SensorTaskState restored =
+        await Prefs.SensorTask.getStateOrDefaults();
 
-    // 🔹 Default: 40 minutes max runtime
-    _plannedStopTime = _serviceStartTime.add(const Duration(minutes: 40));
+    _labelCurrent = restored.label;
+    _plannedStopTime = restored.plannedStopTime;
 
+    if (restored.bundleId != null) {
+      // Resume same logical session
+      _bundleId = restored.bundleId!;
+      _bundleIdAquired = true;
+    } else {
+      // Fresh session
+      _bundleId = await SensorDbController.getNextBundleId();
+      _bundleIdAquired = true;
+    }
+
+    // ── Notification
     await FlutterForegroundTask.updateService(
       notificationText:
-          'Recording [$_labelCurrent] Sensor Data for [$_currentTag]',
+          '${_labelEmoji}Recording [$_labelCurrent] Sensor Data for [$_currentTag]',
     );
 
-    // Subscribe to sensors
-    _accSub = accelerometerEventStream(
-      samplingPeriod: SensorInterval.fastestInterval,
-    ).listen((e) {
-      buffer.add(SensorSample(
-        timestamp: DateTime.now().millisecondsSinceEpoch,
-        type: 'ACC', x: e.x, y: e.y, z: e.z,
-      ));
-    });
-
-    _gyroSub = gyroscopeEventStream(
-      samplingPeriod: SensorInterval.fastestInterval,
-    ).listen((e) {
-      buffer.add(SensorSample(
-        timestamp: DateTime.now().millisecondsSinceEpoch,
-        type: 'GYR', x: e.x, y: e.y, z: e.z,
-      ));
-    });
-
-    _userAccSub = userAccelerometerEventStream(
-      samplingPeriod: SensorInterval.fastestInterval,
-    ).listen((e) {
-      buffer.add(SensorSample(
-        timestamp: DateTime.now().millisecondsSinceEpoch,
-        type: 'UACC', x: e.x, y: e.y, z: e.z,
-      ));
-    });
-
-    _magSub = magnetometerEventStream(
-      samplingPeriod: SensorInterval.fastestInterval,
-    ).listen((e) {
-      buffer.add(SensorSample(
-        timestamp: DateTime.now().millisecondsSinceEpoch,
-        type: 'MAG', x: e.x, y: e.y, z: e.z,
-      ));
-    });
+    // ── Sensors
+    _sensorSubs = await subscribeToAllSensors(buffer);
   }
 
+  // ─────────────────────────────
+  // PERIODIC FLUSH
+  // ─────────────────────────────
   @override
   Future<void> onRepeatEvent(DateTime timestamp) async {
     final batch = await buffer.takeAll();
@@ -99,12 +89,16 @@ class SensorTaskHandler extends TaskHandler {
       await SensorDbController.insertBatch(batch, bundleId: _bundleId);
     }
 
-    // 🔥 Absolute-time lifecycle check
+    // Absolute-time stop
     if (DateTime.now().isAfter(_plannedStopTime)) {
+      _intentionalStop = true;
       FlutterForegroundTask.stopService();
     }
   }
 
+  // ─────────────────────────────
+  // NOTIFICATION ACTION
+  // ─────────────────────────────
   @override
   void onNotificationButtonPressed(String id) async {
     super.onNotificationButtonPressed(id);
@@ -113,12 +107,13 @@ class SensorTaskHandler extends TaskHandler {
 
     final timestamp = DateTime.now().millisecondsSinceEpoch;
 
+    // Toggle label
     _labelCurrent =
         (_labelCurrent == _labelRandom) ? _labelNimaz : _labelRandom;
 
     await FlutterForegroundTask.updateService(
       notificationText:
-          'Recording [$_labelCurrent] Sensor Data for [$_currentTag]',
+          '${_labelEmoji}Recording [$_labelCurrent] Sensor Data for [$_currentTag]',
     );
 
     await SensorDbController.insertTimeLabel(
@@ -131,16 +126,15 @@ class SensorTaskHandler extends TaskHandler {
     if (_labelCurrent == _labelNimaz) {
       final now = DateTime.now();
 
-      // Rule 1: At least 20 minutes when entering Nimaz
-      final minNimazStop = now.add(const Duration(minutes: 20));
-      if (_plannedStopTime.isBefore(minNimazStop)) {
-        _plannedStopTime = minNimazStop;
+      // Rule 1: minimum 20 minutes
+      final minStop = now.add(const Duration(minutes: 20));
+      if (_plannedStopTime.isBefore(minStop)) {
+        _plannedStopTime = minStop;
       }
 
-      // Rule 2: Must stop 5 minutes before next Nimaz
-      final minutesToNextNimaz = await minutesUntilNextNimaz();
-      final hardStop =
-          now.add(Duration(minutes: minutesToNextNimaz - 5));
+      // Rule 2: stop 5 minutes before next Nimaz
+      final minutesToNext = await minutesUntilNextNimaz();
+      final hardStop = now.add(Duration(minutes: minutesToNext - 5));
 
       if (_plannedStopTime.isAfter(hardStop)) {
         _plannedStopTime = hardStop;
@@ -148,12 +142,21 @@ class SensorTaskHandler extends TaskHandler {
     }
   }
 
+  // ─────────────────────────────
+  // DESTROY
+  // ─────────────────────────────
   @override
   Future<void> onDestroy(DateTime timestamp, bool isTimeout) async {
-    await _accSub?.cancel();
-    await _gyroSub?.cancel();
-    await _userAccSub?.cancel();
-    await _magSub?.cancel();
+    // Save ONLY if unintentional
+    if (!_intentionalStop) {
+      await Prefs.SensorTask.saveState(
+        label: _labelCurrent,
+        plannedStopTime: _plannedStopTime,
+        bundleId: _bundleIdAquired ? _bundleId : null,
+      );
+    }
+
+    await cancelAllSubscriptions(_sensorSubs);
 
     final batch = await buffer.takeAll();
     if (batch.isNotEmpty) {

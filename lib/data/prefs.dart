@@ -3,12 +3,15 @@
 import 'dart:convert';
 import 'package:shared_preferences/shared_preferences.dart';
 import '../data/config.dart';
+import 'package:motion_test/data/models/sensor_task_state.dart';
 
 class Prefs {
   // ignore: library_private_types_in_public_api, non_constant_identifier_names
   static final _Alarms Alarms = _Alarms._();
-  
+  // ignore: library_private_types_in_public_api, non_constant_identifier_names
+  static final _SensorTask SensorTask = _SensorTask._();
 }
+
 
 // 🔒 Private to this file only
 class _Alarms {
@@ -39,3 +42,53 @@ class _Alarms {
     await prefs.setString(_key, jsonString);
   }
 }
+
+
+// 🔒 Private to this file only
+class _SensorTask {
+  const _SensorTask._();
+
+  static const String _key = 'sensor_task_state_snapshot';
+
+  /// Save task state as a single JSON blob
+  Future<void> saveState({
+    required String label,
+    required DateTime plannedStopTime,
+    int? bundleId,
+  }) async {
+    final prefs = SharedPreferencesAsync();
+
+    final payload = {
+      'label': label,
+      'plannedStopTime': plannedStopTime.millisecondsSinceEpoch,
+      if (bundleId != null) 'bundleId': bundleId,
+    };
+
+    await prefs.setString(_key, jsonEncode(payload));
+  }
+
+  /// Retrieve state once, then immediately clear it.
+  /// Returns defaults if nothing was stored.
+  Future<SensorTaskState> getStateOrDefaults() async {
+    final prefs = SharedPreferencesAsync();
+    final jsonString = await prefs.getString(_key);
+
+    if (jsonString == null) {
+      return SensorTaskState.defaults();
+    }
+
+    // 🔥 Consume-once semantics
+    await prefs.remove(_key);
+
+    final decoded = jsonDecode(jsonString) as Map<String, dynamic>;
+
+    return SensorTaskState(
+      label: decoded['label'] as String,
+      plannedStopTime: DateTime.fromMillisecondsSinceEpoch(
+        decoded['plannedStopTime'] as int,
+      ),
+      bundleId: decoded['bundleId'] as int?,
+    );
+  }
+}
+

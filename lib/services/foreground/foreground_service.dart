@@ -44,10 +44,10 @@ Future<void> initForegroundService() async {
   // Now start the Foreground Task
   FlutterForegroundTask.startService(
     notificationTitle: 'Sensor Service', 
-    notificationText: 'Recording [Random] Sensor Data',
+    notificationText: 'Recording Sensor Data',
     callback: startCallback, 
     notificationButtons: [
-      NotificationButton(id: 'switch_label', text: 'Switch Label'),
+      NotificationButton(id: 'switch_label', text: 'Change Label'),
       ]
     );
 }
