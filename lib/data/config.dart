@@ -9,6 +9,6 @@ class Config {
     [19, 0],
   ];
 
-  static const currentGitReleaseVersion = "v1.3.0";
+  static const currentGitReleaseVersion = "v1.4.0";
 
 }

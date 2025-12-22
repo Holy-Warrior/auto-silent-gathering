@@ -47,13 +47,6 @@ class DBInit {
           )
         ''');
 
-        // // Copy data
-        // await txn.execute('''
-        //   INSERT INTO sensor_samples (id, timestamp, type, x, y, z, bundle_id)
-        //   SELECT id, timestamp, type, x, y, z, bundle_id
-        //   FROM sensor_samples_old
-        // ''');
-
         // Drop old table
         await txn.execute('DROP TABLE sensor_samples_old');
       });
