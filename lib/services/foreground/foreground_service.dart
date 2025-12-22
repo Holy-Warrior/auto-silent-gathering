@@ -26,7 +26,7 @@ Future<void> initForegroundService() async {
   // Foreground Notification Options
   AndroidNotificationOptions androidNotificationOptions = AndroidNotificationOptions
   (channelId: 'sensor_foreground_service', channelName: 'Sensor Service', 
-  channelDescription: 'Service for gathering sensor data on set intervals', onlyAlertOnce: true);
+  channelDescription: 'Service for gathering sensor data on set intervals', onlyAlertOnce: false, channelImportance: NotificationChannelImportance.HIGH, priority: NotificationPriority.HIGH);
   IOSNotificationOptions iosNotificationOptions = IOSNotificationOptions
   (showNotification: false, playSound: false);
   ForegroundTaskOptions foregroundTaskOptions = ForegroundTaskOptions
