@@ -8,12 +8,14 @@ import 'package:motion_test/data/models/sensor_task_state.dart';
 class Prefs {
   // ignore: library_private_types_in_public_api, non_constant_identifier_names
   static final _Alarms Alarms = _Alarms._();
+
   // ignore: library_private_types_in_public_api, non_constant_identifier_names
   static final _SensorTask SensorTask = _SensorTask._();
 }
 
-
-// 🔒 Private to this file only
+// ─────────────────────────────────────────────────────────────
+// 🔒 Alarms Prefs Controller
+// ─────────────────────────────────────────────────────────────
 class _Alarms {
   const _Alarms._();
 
@@ -23,28 +25,31 @@ class _Alarms {
 
   Future<List<List<int>>> getTimings() async {
     final prefs = SharedPreferencesAsync();
-    
-    final jsonString = await prefs.getString(_key);   // fetching values
-    if (jsonString == null) {                         // if not found, saving and returning defaults
+
+    final jsonString = await prefs.getString(_key);
+    if (jsonString == null) {
       await prefs.setString(_key, jsonEncode(defaultTimings));
-      return Config.defaultTimings; 
+      return Config.defaultTimings;
     }
-    final decoded = jsonDecode(jsonString) as List;   // if found, returning found
+
+    final decoded = jsonDecode(jsonString) as List;
     return decoded.map((e) => List<int>.from(e)).toList();
   }
 
-/// **`updateTimings()` expects exactly 5 timings**
+  /// **`updateTimings()` expects exactly 5 timings**
   Future<void> updateTimings(List<List<int>> newTimings) async {
-    if (newTimings.length != 5) throw ArgumentError('updateTimings expects exactly 5 timings');
-    
+    if (newTimings.length != 5) {
+      throw ArgumentError('updateTimings expects exactly 5 timings');
+    }
+
     final prefs = SharedPreferencesAsync();
-    final jsonString = jsonEncode(newTimings);
-    await prefs.setString(_key, jsonString);
+    await prefs.setString(_key, jsonEncode(newTimings));
   }
 }
 
-
-// 🔒 Private to this file only
+// ─────────────────────────────────────────────────────────────
+// 🔒 Sensor Task State Controller (NOT a Prefs wrapper)
+// ─────────────────────────────────────────────────────────────
 class _SensorTask {
   const _SensorTask._();
 
@@ -67,8 +72,9 @@ class _SensorTask {
     await prefs.setString(_key, jsonEncode(payload));
   }
 
-  /// Retrieve state once, then immediately clear it.
-  /// Returns defaults if nothing was stored.
+  /// Read stored task state.
+  /// Returns defaults if nothing exists.
+  /// ❗ Does NOT mutate storage.
   Future<SensorTaskState> getStateOrDefaults() async {
     final prefs = SharedPreferencesAsync();
     final jsonString = await prefs.getString(_key);
@@ -76,9 +82,6 @@ class _SensorTask {
     if (jsonString == null) {
       return SensorTaskState.defaults();
     }
-
-    // 🔥 Consume-once semantics
-    await prefs.remove(_key);
 
     final decoded = jsonDecode(jsonString) as Map<String, dynamic>;
 
@@ -90,5 +93,11 @@ class _SensorTask {
       bundleId: decoded['bundleId'] as int?,
     );
   }
-}
 
+  /// Explicitly clears any stored task snapshot.
+  /// Caller controls consume-once semantics.
+  Future<void> clearState() async {
+    final prefs = SharedPreferencesAsync();
+    await prefs.remove(_key);
+  }
+}
