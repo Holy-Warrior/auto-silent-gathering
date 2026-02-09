@@ -1,5 +1,5 @@
 <manifest xmlns:android="http://schemas.android.com/apk/res/android">
-<!-- HolyWarrior.START.permissions -->
+    <!-- HolyWarrior.START.permissions -->
     <uses-permission android:name="android.permission.INTERNET"/>
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE" />
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE_DATA_SYNC" />
@@ -7,12 +7,12 @@
     <uses-permission android:name="android.permission.REQUEST_IGNORE_BATTERY_OPTIMIZATIONS" />
     <uses-permission android:name="android.permission.SCHEDULE_EXACT_ALARM" />
     <uses-permission android:name="android.permission.RECEIVE_BOOT_COMPLETED" />
-<!-- HolyWarrior.END.permissions -->
+    <!-- HolyWarrior.END.permissions -->
     <application
-        android:label="Nimaz Data Gathering"
+        android:label="@string/app_name"
         android:name="${applicationName}"
         android:icon="@mipmap/ic_launcher">
-<!-- HolyWarrior.START.service -->
+        <!-- HolyWarrior.START.service -->
         <service 
             android:name="com.pravera.flutter_foreground_task.service.ForegroundService"
             android:foregroundServiceType="dataSync"
@@ -32,7 +32,7 @@
                 <action android:name="android.intent.action.BOOT_COMPLETED" />
             </intent-filter>
         </receiver>
-<!-- HolyWarrior.END.service -->
+        <!-- HolyWarrior.END.service -->
         <activity
             android:name=".MainActivity"
             android:exported="true"

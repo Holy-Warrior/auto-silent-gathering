@@ -1,4 +1,4 @@
-package a.b.c.motion_test
+package app.asg.asg
 
 import io.flutter.embedding.android.FlutterActivity
 

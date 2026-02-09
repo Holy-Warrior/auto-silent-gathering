@@ -1,11 +1,10 @@
-// lib\main.dart
 import 'package:flutter/material.dart';
-import 'package:android_alarm_manager_plus/android_alarm_manager_plus.dart';
+import 'package:hive_flutter/hive_flutter.dart';
 import 'screens/home_screen.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
-  await AndroidAlarmManager.initialize();
+  await Hive.initFlutter();
   runApp(const App());
 }
 
@@ -16,8 +15,33 @@ class App extends StatelessWidget {
   Widget build(BuildContext context) {
     return MaterialApp(
       title: 'Nimaz Data Collection',
-      theme: ThemeData(colorScheme: .fromSeed(seedColor: Colors.deepPurple)),
+
+      theme: lightTheme(),
+      darkTheme: darkTheme(),
+      themeMode: ThemeMode.system,
+      debugShowCheckedModeBanner: false,
+
       home: const HomeScreen(title: 'Nimaz Data Collection'),
     );
   }
+}
+
+
+ThemeData lightTheme (){
+  return ThemeData(
+        colorScheme: ColorScheme.fromSeed(
+          seedColor: Colors.blue,
+          brightness: Brightness.light,
+        ),
+        useMaterial3: true,
+      );
+}
+ThemeData darkTheme (){
+  return ThemeData(
+        colorScheme: ColorScheme.fromSeed(
+          seedColor: Colors.blue,
+          brightness: Brightness.dark,
+        ),
+        useMaterial3: true,
+      );
 }

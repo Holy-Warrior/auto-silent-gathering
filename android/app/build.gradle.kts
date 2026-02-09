@@ -1,21 +1,21 @@
-import java.util.Properties
-val keystoreProperties = Properties()
-val keystorePropertiesFile = rootProject.file("key.properties")
-if (keystorePropertiesFile.exists()) {
-    keystoreProperties.load(keystorePropertiesFile.inputStream())
-}
-
 plugins {
     id("com.android.application")
     id("kotlin-android")
-    // The Flutter Gradle Plugin must be applied after the Android and Kotlin Gradle plugins.
     id("dev.flutter.flutter-gradle-plugin")
 }
 
 android {
-    namespace = "a.b.c.motion_test"
+    namespace = "app.asg.asg"
     compileSdk = flutter.compileSdkVersion
     ndkVersion = flutter.ndkVersion
+
+    defaultConfig {
+        applicationId = "app.asg.asg"
+        minSdk = flutter.minSdkVersion
+        targetSdk = flutter.targetSdkVersion
+        versionCode = flutter.versionCode
+        versionName = flutter.versionName
+    }
 
     compileOptions {
         sourceCompatibility = JavaVersion.VERSION_17
@@ -26,42 +26,19 @@ android {
         jvmTarget = JavaVersion.VERSION_17.toString()
     }
 
-    defaultConfig {
-        // TODO: Specify your own unique Application ID (https://developer.android.com/studio/build/application-id.html).
-        applicationId = "a.b.c.motion_test"
-        // You can update the following values to match your application needs.
-        // For more information, see: https://flutter.dev/to/review-gradle-config.
-        minSdk = flutter.minSdkVersion
-        targetSdk = flutter.targetSdkVersion
-        versionCode = flutter.versionCode
-        versionName = flutter.versionName
-    }
-
-    // buildTypes {
-    //     release {
-    //         // TODO: Add your own signing config for the release build.
-    //         // Signing with the debug keys for now, so `flutter run --release` works.
-    //         signingConfig = signingConfigs.getByName("debug")
-    //     }
-    // }
-
-    signingConfigs {
-        create("release") {
-            storeFile = file(keystoreProperties["storeFile"] as String)
-            storePassword = keystoreProperties["storePassword"] as String
-            keyAlias = keystoreProperties["keyAlias"] as String
-            keyPassword = keystoreProperties["keyPassword"] as String
-        }
-    }
-
     buildTypes {
+        getByName("debug") {
+            // Optional: add debug suffix if needed
+            applicationIdSuffix = ".debug"
+            resValue("string", "app_name", "ASG Debug")
+        }
+
         getByName("release") {
-            signingConfig = signingConfigs.getByName("release")
-            isMinifyEnabled = true        // optional: shrink code
-            isShrinkResources = true      // optional: shrink resources
+            resValue("string", "app_name", "Auto Silent Gathering")
+            // Signing config should go here
+            signingConfig = signingConfigs.getByName("debug") // Replace with release config if signing
         }
     }
-
 }
 
 flutter {
