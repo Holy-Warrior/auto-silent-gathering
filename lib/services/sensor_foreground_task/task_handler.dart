@@ -36,6 +36,7 @@ class SensorTaskHandler extends TaskHandler{
   Future<void> onStart(DateTime timestamp, TaskStarter starter) async {
     final drStart = debugLogReference('onStart');
     debugPrint(ColorCode.green('${drStart}Execution Started', true));
+    if (starter == TaskStarter.developer) await archiveCompression(taskText: 'Cleaning previos session data'); 
 
     sensorManager.subscribeAll(
       samplingPeriod: Config.samplingPeriod,
@@ -89,9 +90,7 @@ class SensorTaskHandler extends TaskHandler{
     }
 
     startupCompleted = true;
-    await StateBox.instance.updateState(
-      isRunning: true,
-    );
+    await StateBox.instance.updateState(isRunning: true, startTimeMillis: millisecondsSinceEpoch);
     debugPrint(ColorCode.red('${drStart}Execution Ended', true));
   }
 
@@ -122,10 +121,12 @@ class SensorTaskHandler extends TaskHandler{
         debugPrint(ColorCode.red('${debugLogReference('onNotificationButtonPressed')}startup incomplete:Execution Ended', true));
         return;
       }
+    
+    debugPrint(ColorCode.yellow('${debugLogReference('onNotificationButtonPressed')}id: $id', true));
 
-    if (id == 'switch_label' && changeLabelInExecution) 
+    if (id == 'switch_label' && !changeLabelInExecution) 
       { await _switchLabelCallback(millisecondsSinceEpoch); }
-    else if (id == 'stop' && stopInExecution) 
+    else if (id == 'stop' && !stopInExecution) 
       {await _stopCallback();}
 
     debugPrint(ColorCode.red('${debugLogReference('onNotificationButtonPressed')}Execution Ended', true));
@@ -153,9 +154,16 @@ class SensorTaskHandler extends TaskHandler{
   Future<void> _stopCallback()async{
     stopInExecution=true;
     isLoopEventDisabled = true;
+    await FlutterForegroundTask.stopService();
+  }
+
+
+  @override // END TASK
+  Future<void> onDestroy(DateTime timestamp, bool isTimeout) async {
+    stopInExecution = true;
+    isLoopEventDisabled = true;
     await sensorTaskEnder();
     await archiveCompression();
-    FlutterForegroundTask.stopService();
   }
 
 
@@ -165,20 +173,16 @@ class SensorTaskHandler extends TaskHandler{
       notificationText: 'Cleaning up',
     );
     await sensorManager.unsubscribeAll();
-    await StateBox.instance.updateState(isRunning: false);
+    await StateBox.instance.updateState(isRunning: false, startTimeMillis: null);
     final List<SensorSample> samples = await buffer.takeAll();
     await SensorDbController.insertBatch(samples, bundleId: bundleId);
   }
 
 
-  Future<void>archiveCompression()async{
-    await FlutterForegroundTask.updateService(notificationText: 'Compressing Sensors Data');
+  Future<void>archiveCompression({String taskText = 'Compressing Sensors Data'})async{
+    await FlutterForegroundTask.updateService(notificationText: taskText);
     await SensorDbController.bundleAndExportZip();
     await FlutterForegroundTask.updateService(notificationText: 'Done');
   }
-
-
-  @override // END TASK
-  Future<void> onDestroy(DateTime timestamp, bool isTimeout) async { return; }
 
 }

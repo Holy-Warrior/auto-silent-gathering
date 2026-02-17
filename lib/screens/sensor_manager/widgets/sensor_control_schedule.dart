@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:asg/data/constants/config.dart';
 
 class ScheduleItem {
   String name;
@@ -14,6 +15,7 @@ class ScheduleRow extends StatelessWidget {
   final VoidCallback onDelete;
   final ValueChanged<bool> onToggle;
   final VoidCallback onPickTime;
+  final TimeOfDay displayTime;
 
   const ScheduleRow({
     super.key,
@@ -22,6 +24,7 @@ class ScheduleRow extends StatelessWidget {
     required this.onDelete,
     required this.onToggle,
     required this.onPickTime,
+    required this.displayTime,
   });
 
   @override
@@ -37,7 +40,7 @@ class ScheduleRow extends StatelessWidget {
           child: Text(
             MaterialLocalizations.of(
               context,
-            ).formatTimeOfDay(item.time, alwaysUse24HourFormat: false),
+            ).formatTimeOfDay(displayTime, alwaysUse24HourFormat: false),
           ),
         ),
 
@@ -58,21 +61,19 @@ class SensorControlSchedule extends StatefulWidget {
     required this.onSchedulesUpdated,
   });
 
-  final Future<Map<String, Map<String, dynamic>>> Function()
-      onLoadSchedules;
+  final Future<Map<String, Map<String, dynamic>>> Function() onLoadSchedules;
 
-  final Future<void> Function(
-    Map<String, Map<String, dynamic>> schedules,
-  ) onSchedulesUpdated;
+  final Future<void> Function(Map<String, Map<String, dynamic>> schedules)
+  onSchedulesUpdated;
 
   @override
-  State<SensorControlSchedule> createState() =>
-      _SensorControlScheduleState();
+  State<SensorControlSchedule> createState() => _SensorControlScheduleState();
 }
 
 class _SensorControlScheduleState extends State<SensorControlSchedule> {
   bool editMode = false;
   List<ScheduleItem> items = [];
+  bool showExecutionTime = false; // toggle state
 
   @override
   void initState() {
@@ -179,7 +180,7 @@ class _SensorControlScheduleState extends State<SensorControlSchedule> {
   Future<void> pickTime(int index) async {
     final picked = await showTimePicker(
       context: context,
-      initialTime: items[index].time,
+      initialTime: items[index].time, // always original
     );
 
     if (picked != null) {
@@ -223,6 +224,21 @@ class _SensorControlScheduleState extends State<SensorControlSchedule> {
             ],
           ),
         ),
+        Row(
+          children: [
+            Text(
+              showExecutionTime?"Execution Time (view only)":"Original Nimaz Time",
+              style: const TextStyle(fontWeight: FontWeight.w500),
+            ),
+            const SizedBox(width: 8),
+            Switch(
+              value: showExecutionTime,
+              onChanged: (v) {
+                setState(() => showExecutionTime = v);
+              },
+            ),
+          ],
+        ),
 
         const Divider(),
 
@@ -236,6 +252,9 @@ class _SensorControlScheduleState extends State<SensorControlSchedule> {
               padding: const EdgeInsets.symmetric(horizontal: 8),
               child: ScheduleRow(
                 item: items[index],
+                displayTime: showExecutionTime
+                    ? Config.convertTime(items[index].time, Config.executionOffsetMinutes)
+                    : items[index].time,
                 showDelete: editMode,
                 onToggle: (v) {
                   setState(() => items[index].enabled = v);
@@ -264,3 +283,4 @@ class _SensorControlScheduleState extends State<SensorControlSchedule> {
     );
   }
 }
+

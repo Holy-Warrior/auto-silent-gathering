@@ -115,6 +115,20 @@ class SensorDbController {
 
         if (rows.isEmpty) continue;
 
+        // final timestamps = rows
+        //     .map((r) => r['timestamp'])
+        //     .whereType<int>()
+        //     .toList(growable: false);
+        // final int? startedAt = timestamps.isEmpty
+        //     ? null
+        //     : timestamps.reduce((a, b) => a < b ? a : b);
+        // final int? endedAt = timestamps.isEmpty
+        //     ? null
+        //     : timestamps.reduce((a, b) => a > b ? a : b);
+        // final int durationMs = (startedAt != null && endedAt != null)
+        //     ? endedAt - startedAt
+        //     : 0;
+
         // Make mutable copy and remove bundle_id
         final sanitizedRows = rows
             .map(
@@ -129,6 +143,8 @@ class SensorDbController {
         // Write JSON file
         final jsonString = jsonEncode(sanitizedRows);
         final now = DateTime.now().millisecondsSinceEpoch;
+        // final jsonFileName = 'bundle_$now.json';
+        // final file = File('${dir.path}/$jsonFileName');
         final file = File('${dir.path}/bundle_$now.json');
         await file.writeAsString(jsonString);
 
@@ -153,6 +169,21 @@ class SensorDbController {
           'timed_label': jsonEncode(timeLabels),
           'crash_recovery': jsonEncode(crashRecovery),
         }, conflictAlgorithm: ConflictAlgorithm.ignore);
+
+        // await txn.insert('session_archives', {
+        //   'bundle_id': bundleId,
+        //   'title': 'Session $bundleId',
+        //   'sample_count': rows.length,
+        //   'started_at': startedAt,
+        //   'ended_at': endedAt,
+        //   'duration_ms': durationMs,
+        //   'json_name': jsonFileName,
+        //   'archive_path': null,
+        //   'sync_status': 'pending',
+        //   'local_available': 1,
+        //   'is_exported': 0,
+        //   'created_at': now,
+        // }, conflictAlgorithm: ConflictAlgorithm.replace);
 
         // Clear original samples
         await txn.delete(
@@ -234,6 +265,17 @@ class SensorDbController {
         // delete original bundle JSON
         await file.delete();
 
+        // await db.update(
+        //   'session_archives',
+        //   {
+        //     'archive_path': zipFile.path,
+        //     'json_name': 'temp_bundle_$bundleId.json',
+        //     'is_exported': 1,
+        //   },
+        //   where: 'bundle_id = ?',
+        //   whereArgs: [bundleId],
+        // );
+
         archivedBundleIds.add(bundleId);
       } catch (_) {
         continue;
@@ -267,6 +309,7 @@ class SensorDbController {
       'sensor_samples': await count('sensor_samples'),
       'sensor_bundles': await count('sensor_bundles'),
       'time_label': await count('time_label'),
+      // 'session_archives': await count('session_archives'),
     };
 
     // Bundle table schema (exclude json_data)
@@ -285,6 +328,35 @@ class SensorDbController {
         )
         .toList();
 
+    // final currentSamples = tableCounts['sensor_samples'] as int;
+    // final pendingBundles = tableCounts['sensor_bundles'] as int;
+
+    // final String sessionSource;
+    // if (currentSamples > 0) {
+    //   sessionSource = 'current';
+    // } else if (pendingBundles > 0) {
+    //   sessionSource = 'previous';
+    // } else {
+    //   sessionSource = 'none';
+    // }
+
+    // final recentArchives = await database.query(
+    //   'session_archives',
+    //   orderBy: 'created_at DESC',
+    //   limit: 10,
+    // );
+
+    // return {
+    //   'tables': tableCounts,
+    //   'sensor_bundles_schema': schema,
+    //   'session_summary': {
+    //     'source': sessionSource,
+    //     'current_samples': currentSamples,
+    //     'pending_previous_session_bundles': pendingBundles,
+    //     'archives_total': tableCounts['session_archives'],
+    //   },
+    //   'recent_archives': recentArchives,
+    // };
     return {'tables': tableCounts, 'sensor_bundles_schema': schema};
   }
 }

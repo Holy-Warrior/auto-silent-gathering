@@ -17,12 +17,13 @@ class HomeScreen extends StatelessWidget {
         padding: const EdgeInsets.all(16.0),
         child: Column(
           children: [
-            // WidgetGitReleaseChecker(
-            //   user: Config.gitUser,
-            //   repo: Config.gitRepo,
-            //   currentRelease: Config.gitCurentRelease,
-            //   filterOutPreRelease: Config.gitFilterOutPrerelease,
-            // ),
+            WidgetGitReleaseChecker(
+              user: Config.gitUser,
+              repo: Config.gitRepo,
+              currentRelease: Config.gitCurentRelease,
+              filterOutPreRelease: Config.gitFilterOutPrerelease,
+              showLoading: false,
+            ),
             TabManager(
               tabs: const [
                 ManagedTab(title: 'Sensor Data Gathering', child: SensorManager()),

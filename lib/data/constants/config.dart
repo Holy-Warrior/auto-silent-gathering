@@ -1,5 +1,6 @@
 import 'package:path/path.dart' as p;
 import 'package:path_provider/path_provider.dart';
+import 'package:flutter/material.dart';
 
 class Config {
   static const String gitUser = 'Holy-Warrior';
@@ -8,8 +9,8 @@ class Config {
   static const bool gitFilterOutPrerelease = true;
 
   static const Duration samplingPeriod = Duration(milliseconds: 20);
-
   static const foregroundActionRepeatInterval = 10000; //10 seconds
+  static const int executionOffsetMinutes = -10;
 
   // static const zipArchivePath = "archive.path";
 
@@ -17,6 +18,23 @@ class Config {
     final dir = await getApplicationDocumentsDirectory();
     return p.join(dir.path, "archive.zip");
   }
+  
+  static TimeOfDay toExecutionTime(TimeOfDay time) {
+    return convertTime(time, executionOffsetMinutes);
+  }
+
+  static TimeOfDay convertTime(TimeOfDay time, int offsetMinutes) {
+    final totalMinutes = time.hour * 60 + time.minute + offsetMinutes;
+
+    final normalized =
+        (totalMinutes % (24 * 60) + (24 * 60)) % (24 * 60);
+
+    final newHour = normalized ~/ 60;
+    final newMinute = normalized % 60;
+
+    return TimeOfDay(hour: newHour, minute: newMinute);
+  }
+
 }
 // class SensorInterval {
 //   static const normalInterval = Duration(milliseconds: 200);

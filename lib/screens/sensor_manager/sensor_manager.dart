@@ -3,6 +3,7 @@ import 'package:asg/screens/sensor_manager/widgets/sensor_control_manual.dart';
 import 'package:asg/screens/sensor_manager/widgets/sensor_control_schedule.dart';
 import 'package:flutter/material.dart';
 import 'package:asg/data/hive.dart';
+import 'sensor_manager_actions.dart';
 
 class SensorManager extends StatefulWidget {
   const SensorManager({super.key});
@@ -33,21 +34,29 @@ class _SensorManagerState extends State<SensorManager> {
   Future<void> onModeChanged(Mode mode) async {
     if (_mode == mode) return;
 
+    final switched = await handleModeSwitch(
+      context: context,
+      newMode: mode,
+    );
+
+    if (!switched) return;
+
     setState(() => _mode = mode);
 
-    await StateBox.instance.setSensorMode(mode);
+    if (!mounted) return;
 
-    final text = mode == Mode.manual
-        ? 'Manual mode selected'
-        : 'Schedule mode selected';
-
-    if (mounted) {
-      ScaffoldMessenger.of(context)
-        ..hideCurrentSnackBar()
-        ..showSnackBar(
-          SnackBar(content: Text(text), duration: const Duration(seconds: 2)),
-        );
-    }
+    ScaffoldMessenger.of(context)
+      ..hideCurrentSnackBar()
+      ..showSnackBar(
+        SnackBar(
+          content: Text(
+            mode == Mode.manual
+                ? 'Manual mode selected'
+                : 'Schedule mode selected',
+          ),
+          duration: const Duration(seconds: 2),
+        ),
+      );
   }
 
   @override
@@ -69,12 +78,4 @@ class _SensorManagerState extends State<SensorManager> {
       ],
     );
   }
-}
-
-Future<Map<String, Map<String, dynamic>>> onLoadSchedules() async {
-  return StateBox.instance.getSchedules();
-}
-
-Future<void> onSchedulesUpdated(Map<String, Map<String, dynamic>> data) async {
-  StateBox.instance.overwriteSchedules(data);
 }

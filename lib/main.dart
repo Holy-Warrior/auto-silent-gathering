@@ -1,10 +1,12 @@
 import 'package:flutter/material.dart';
 import 'package:hive_flutter/hive_flutter.dart';
 import 'screens/home_screen.dart';
+import 'package:android_alarm_manager_plus/android_alarm_manager_plus.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
   await Hive.initFlutter();
+  await AndroidAlarmManager.initialize();
   runApp(const App());
 }
 

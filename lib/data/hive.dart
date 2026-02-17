@@ -26,8 +26,7 @@ class StateBox {
 
     if (bundleId != null) _pendingUpdates['bundleId'] = bundleId;
     if (isNimaz != null) _pendingUpdates['isNimaz'] = isNimaz;
-    if (startTimeMillis != null)
-      _pendingUpdates['startTimeMillis'] = startTimeMillis;
+    if (startTimeMillis != null) _pendingUpdates['startTimeMillis'] = startTimeMillis;
     if (isRunning != null) _pendingUpdates['isRunning'] = isRunning;
 
     await _box.putAll(_pendingUpdates); // write all pending updates

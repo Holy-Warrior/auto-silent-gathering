@@ -8,6 +8,8 @@ class WidgetGitReleaseChecker extends StatefulWidget {
   final String repo;
   final String currentRelease;
   final bool filterOutPreRelease;
+  final bool showLoading;
+
 
   const WidgetGitReleaseChecker({
     super.key,
@@ -15,6 +17,7 @@ class WidgetGitReleaseChecker extends StatefulWidget {
     required this.repo,
     required this.currentRelease,
     required this.filterOutPreRelease,
+    required this.showLoading,
   });
 
   @override
@@ -142,6 +145,10 @@ class _WidgetGitReleaseCheckerState extends State<WidgetGitReleaseChecker> {
       ),
       builder: (context, snapshot) {
         if (snapshot.connectionState == ConnectionState.waiting) {
+          if (!widget.showLoading) {
+            return const SizedBox.shrink();
+          }
+
           return const SizedBox(
             height: 50,
             child: Center(child: CircularProgressIndicator()),

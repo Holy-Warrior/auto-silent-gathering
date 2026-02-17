@@ -12,7 +12,7 @@ class DataManger extends StatelessWidget {
       children: [
             _SectionCard(title: 'Data Export', child: ExportShareZipButton()),
       
-            SizedBox(height: 16),
+            const SizedBox(height: 16),
       
             _SectionCard(title: 'Database', child: DatabaseStatsButton()),
       ]
