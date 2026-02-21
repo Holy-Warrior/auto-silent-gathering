@@ -1,3 +1,5 @@
+import 'package:asg/firebase_options.dart';
+import 'package:firebase_core/firebase_core.dart';
 import 'package:flutter/material.dart';
 import 'package:hive_flutter/hive_flutter.dart';
 import 'screens/home_screen.dart';
@@ -7,6 +9,7 @@ void main() async {
   WidgetsFlutterBinding.ensureInitialized();
   await Hive.initFlutter();
   await AndroidAlarmManager.initialize();
+  await Firebase.initializeApp(options: DefaultFirebaseOptions.currentPlatform);
   runApp(const App());
 }
 
@@ -28,22 +31,16 @@ class App extends StatelessWidget {
   }
 }
 
-
-ThemeData lightTheme (){
+ThemeData lightTheme() {
   return ThemeData(
-        colorScheme: ColorScheme.fromSeed(
-          seedColor: Colors.blue,
-          brightness: Brightness.light,
-        ),
-        useMaterial3: true,
-      );
+    colorScheme: ColorScheme.fromSeed(seedColor: Colors.blue, brightness: Brightness.light),
+    useMaterial3: true,
+  );
 }
-ThemeData darkTheme (){
+
+ThemeData darkTheme() {
   return ThemeData(
-        colorScheme: ColorScheme.fromSeed(
-          seedColor: Colors.blue,
-          brightness: Brightness.dark,
-        ),
-        useMaterial3: true,
-      );
+    colorScheme: ColorScheme.fromSeed(seedColor: Colors.blue, brightness: Brightness.dark),
+    useMaterial3: true,
+  );
 }
