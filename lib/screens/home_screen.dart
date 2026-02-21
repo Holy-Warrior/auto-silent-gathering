@@ -27,7 +27,7 @@ class HomeScreen extends StatelessWidget {
             TabManager(
               tabs: const [
                 ManagedTab(title: 'Sensor Data Gathering', child: SensorManager()),
-                ManagedTab(title: 'Data Management', child: DataManger())
+                ManagedTab(title: 'Data Management', child: DataManager())
               ],
             ),
           ],

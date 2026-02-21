@@ -1,12 +1,13 @@
-import 'package:path_provider/path_provider.dart';
+import 'package:flutter/widgets.dart';
 import 'package:sqflite/sqflite.dart';
 import '../helper/db_init_instance.dart';
 import 'dart:convert';
 import '../models/sensor_sample.dart';
 import 'dart:io';
-import 'package:path/path.dart' as p;
 import 'package:asg/data/constants/config.dart';
 import 'utils.dart';
+import 'utils/file_controllers.dart';
+import 'package:intl/intl.dart';
 
 class SensorDbController {
   SensorDbController._();
@@ -21,11 +22,7 @@ class SensorDbController {
   }
 
   /// Insert a new time label
-  static Future<void> insertTimeLabel({
-    required int bundleId,
-    required int timestamp,
-    required bool isNimaz,
-  }) async {
+  static Future<void> insertTimeLabel({required int bundleId, required int timestamp, required bool isNimaz}) async {
     final database = await _db;
     await database.insert('time_label', {
       'bundle_id': bundleId,
@@ -35,10 +32,7 @@ class SensorDbController {
   }
 
   /// Insert a new crash recovery record
-  static Future<void> insertCrashRecoveryRecord({
-    required int bundleId,
-    required int timestamp,
-  }) async {
+  static Future<void> insertCrashRecoveryRecord({required int bundleId, required int timestamp}) async {
     final database = await _db;
     await database.insert('crash_recovery', {
       'bundle_id': bundleId,
@@ -47,10 +41,7 @@ class SensorDbController {
   }
 
   /// Insert sensor samples
-  static Future<void> insertBatch(
-    List<SensorSample> samples, {
-    required int bundleId,
-  }) async {
+  static Future<void> insertBatch(List<SensorSample> samples, {required int bundleId}) async {
     if (samples.isEmpty) return;
     final database = await _db;
 
@@ -71,63 +62,43 @@ class SensorDbController {
     });
   }
 
-  /// Get next unused bundle_id from sensor_samples
-  static Future<int> getNextBundleId({
-    bool recoverPreviouslyUsedId = false,
-  }) async {
+  /// Get next unused bundle_id
+  static Future<int> getNextBundleId({bool recoverPreviouslyUsedId = false}) async {
     final db = await _db;
-
-    final r1 = await db.rawQuery(
-      'SELECT MAX(bundle_id) as max_id FROM sensor_samples',
-    );
-    final maxSamples = r1.first['max_id'] as int?;
-
-    if (maxSamples != null) {
-      return recoverPreviouslyUsedId ? maxSamples : maxSamples + 1;
+    var r = await db.rawQuery('SELECT COUNT(*) AS count FROM time_label');
+    if (r.first['count'] as int > 0) {
+      return 1;
+    } else {
+      r = await db.rawQuery('SELECT MAX(bundle_id) as max_id FROM time_label');
+      final maxBundles = r.first['max_id'] as int? ?? 1;
+      return recoverPreviouslyUsedId ? maxBundles : maxBundles + 1;
     }
-
-    final r2 = await db.rawQuery(
-      'SELECT MAX(id) as max_id FROM sensor_bundles',
-    );
-    final maxBundles = r2.first['max_id'] as int? ?? 0;
-    return recoverPreviouslyUsedId ? maxBundles : maxBundles + 1;
   }
 
   /// Bundle sensor samples by unique bundle_id into sensor_bundles
   /// Include associated time_label data as JSON
-  static Future<void> bundleAndClearSamples() async {
+  static Future<void> _bundleAndClearSamples() async {
     final database = await _db;
-    final dir = await getApplicationDocumentsDirectory();
 
     await database.transaction((txn) async {
-      final ids = await txn.rawQuery(
-        'SELECT DISTINCT bundle_id FROM sensor_samples WHERE bundle_id IS NOT NULL',
-      );
+      final ids = await txn.rawQuery('SELECT DISTINCT bundle_id FROM sensor_samples WHERE bundle_id IS NOT NULL');
+      if (ids.isEmpty) return;
 
       for (final row in ids) {
+        final now = DateTime.now().millisecondsSinceEpoch;
         final int bundleId = row['bundle_id'] as int;
-
-        final rows = await txn.query(
-          'sensor_samples',
-          where: 'bundle_id = ?',
-          whereArgs: [bundleId],
-        );
-
+        final rows = await txn.query('sensor_samples', where: 'bundle_id = ?', whereArgs: [bundleId]);
         if (rows.isEmpty) continue;
-
-        // final timestamps = rows
-        //     .map((r) => r['timestamp'])
-        //     .whereType<int>()
-        //     .toList(growable: false);
-        // final int? startedAt = timestamps.isEmpty
-        //     ? null
-        //     : timestamps.reduce((a, b) => a < b ? a : b);
-        // final int? endedAt = timestamps.isEmpty
-        //     ? null
-        //     : timestamps.reduce((a, b) => a > b ? a : b);
-        // final int durationMs = (startedAt != null && endedAt != null)
-        //     ? endedAt - startedAt
-        //     : 0;
+        // compute metadata
+        final stats = await txn.rawQuery(
+          'SELECT MIN(timestamp) AS start, MAX(timestamp) AS end, COUNT(*) AS count FROM sensor_samples WHERE bundle_id = ?',
+          [bundleId],
+        );
+        final rowStats = stats.first;
+        final int? startedAt = (rowStats['start'] as int?);
+        final int? endedAt = (rowStats['end'] as int?);
+        final int sampleCount = (rowStats['count'] as int?) ?? 0;
+        final int durationMs = (startedAt != null && endedAt != null) ? endedAt - startedAt : 0;
 
         // Make mutable copy and remove bundle_id
         final sanitizedRows = rows
@@ -139,224 +110,166 @@ class SensorDbController {
               },
             )
             .toList();
+        final [
+          timeLabels as List<Map<String, Object?>>,
+          crashRecovery as List<Map<String, Object?>>,
+          info as ({String deviceModel, String deviceName}),
+        ] = await Future.wait([
+          txn.query('time_label', where: 'bundle_id = ?', whereArgs: [bundleId]),
+          txn.query('crash_recovery', where: 'bundle_id = ?', whereArgs: [bundleId]),
+          ControllerUtils.deviceInfoString(),
+        ]);
 
-        // Write JSON file
-        final jsonString = jsonEncode(sanitizedRows);
-        final now = DateTime.now().millisecondsSinceEpoch;
-        // final jsonFileName = 'bundle_$now.json';
-        // final file = File('${dir.path}/$jsonFileName');
-        final file = File('${dir.path}/bundle_$now.json');
-        await file.writeAsString(jsonString);
+        // finalize json data
+        final jsonPath = await FileUtils.saveJsonToFile({
+          "created_at": now,
+          "timed_label": jsonEncode(timeLabels),
+          "crash_recovery": jsonEncode(crashRecovery),
+          "samplingPeriod": Config.samplingPeriod.inMilliseconds,
+          "device_name": info.deviceName,
+          "device_model": info.deviceModel,
+          "json": jsonEncode(sanitizedRows),
+        }, 'bundle_$now.json');
 
-        // Time labels
-        final timeLabels = await txn.query(
-          'time_label',
-          where: 'bundle_id = ?',
-          whereArgs: [bundleId],
-        );
-
-        // Time labels
-        final crashRecovery = await txn.query(
-          'crash_recovery',
-          where: 'bundle_id = ?',
-          whereArgs: [bundleId],
-        );
-
-        // Insert into sensor_bundles
-        await txn.insert('sensor_bundles', {
+        await txn.insert('archives', {
+          'started_at': startedAt,
+          'ended_at': endedAt,
+          'duration_ms': durationMs,
+          'sample_count': sampleCount,
           'created_at': now,
-          'file_path': file.path,
-          'timed_label': jsonEncode(timeLabels),
-          'crash_recovery': jsonEncode(crashRecovery),
+          'is_archive': 0,
+          'path': jsonPath,
+          'is_synced': 0,
+          'local_available': 1,
         }, conflictAlgorithm: ConflictAlgorithm.ignore);
 
-        // await txn.insert('session_archives', {
-        //   'bundle_id': bundleId,
-        //   'title': 'Session $bundleId',
-        //   'sample_count': rows.length,
-        //   'started_at': startedAt,
-        //   'ended_at': endedAt,
-        //   'duration_ms': durationMs,
-        //   'json_name': jsonFileName,
-        //   'archive_path': null,
-        //   'sync_status': 'pending',
-        //   'local_available': 1,
-        //   'is_exported': 0,
-        //   'created_at': now,
-        // }, conflictAlgorithm: ConflictAlgorithm.replace);
-
         // Clear original samples
-        await txn.delete(
-          'sensor_samples',
-          where: 'bundle_id = ?',
-          whereArgs: [bundleId],
-        );
-        await txn.delete(
-          'time_label',
-          where: 'bundle_id = ?',
-          whereArgs: [bundleId],
-        );
-        await txn.delete(
-          'crash_recovery',
-          where: 'bundle_id = ?',
-          whereArgs: [bundleId],
-        );
+        await txn.delete('sensor_samples', where: 'bundle_id = ?', whereArgs: [bundleId]);
+        await txn.delete('time_label', where: 'bundle_id = ?', whereArgs: [bundleId]);
+        await txn.delete('crash_recovery', where: 'bundle_id = ?', whereArgs: [bundleId]);
       }
     });
   }
 
-  static Future<File?> bundleAndExportZip() async {
+  static Future<void> delteArchive(int id) async {
     final db = await _db;
+    final rows = await db.query('archives', where: 'id = ?', whereArgs: [id]);
+    if (rows.isEmpty) return;
+    final row = rows.first;
+    final path = row['path'] as String?;
+    // deleting the file
+    try {
+      if (path != null) {
+        final file = File(path);
+        if (await file.exists()) {
+          await file.delete();
+        }
+      }
+    // ignore: empty_catchess
+    } catch (e) {debugPrint(ColorCode.red('[SensorDbController::deleteArchive]$e',true));}
+    await db.delete('archives',  where: 'id = ?', whereArgs: [id]);
+  }
 
-    // Step 1: bundle new samples
-    await bundleAndClearSamples();
+  static Future<void> bundleAndZipAllData() async {
+    final database = await _db;
+    await _bundleAndClearSamples(); // making sure bundles are ready
 
-    final bundles = await db.query('sensor_bundles');
-
-    final dir = await getApplicationDocumentsDirectory();
-    final zipFile = File(await Config.zipArchivePath());
-
-    if (bundles.isEmpty) {
-      return await zipFile.exists() ? zipFile : null;
-    }
-
-    final List<int> archivedBundleIds = [];
-
-    final info = await ControllerUtils.deviceInfoString();
-
-    for (final bundle in bundles) {
-      final filePath = bundle['file_path'] as String?;
-      final bundleId = bundle['id'] as int?;
-
-      if (filePath == null || bundleId == null) continue;
-
-      final file = File(filePath);
-      if (!await file.exists()) continue;
-
-      try {
-        // Read original JSON
-        final jsonStr = await file.readAsString();
-        final jsonData = jsonDecode(jsonStr);
-
-        // Build final wrapped JSON
-        final wrappedJson = {
-          "created_at": bundle['created_at'],
-          "timed_label": (bundle['timed_label'] != null 
-                          && (bundle['timed_label'] as String).isNotEmpty)
-                            ? jsonDecode(bundle['timed_label'] as String)
-                            : [],
-          "crash_recovery": (bundle['crash_recovery'] != null 
-                          && (bundle['crash_recovery'] as String).isNotEmpty)
-                            ? jsonDecode(bundle['crash_recovery'] as String)
-                            : [],
-          "samplingPeriod": Config.samplingPeriod.inMilliseconds,
-          "device_name": info.deviceName,
-          "device_model": info.deviceModel,
-          "json": jsonData,
-        };
-
-        // Write temporary file to pass to archive
-        final tempFilePath = p.join(dir.path, 'temp_bundle_$bundleId.json');
-        final tempFile = File(tempFilePath);
-        await tempFile.writeAsString(jsonEncode(wrappedJson));
-
-        await ControllerUtils.addJsonToArchive(tempFilePath);
-
-        // delete original bundle JSON
-        await file.delete();
-
-        // await db.update(
-        //   'session_archives',
-        //   {
-        //     'archive_path': zipFile.path,
-        //     'json_name': 'temp_bundle_$bundleId.json',
-        //     'is_exported': 1,
-        //   },
-        //   where: 'bundle_id = ?',
-        //   whereArgs: [bundleId],
-        // );
-
-        archivedBundleIds.add(bundleId);
-      } catch (_) {
-        continue;
+    var rows = await database.query('archives', where: 'is_archive = ?', whereArgs: [0]);
+    if (rows.isNotEmpty) {
+      for (final bundle in rows) {
+        final zipPath = await FileUtils.moveJsonToZipFile(bundle['path'] as String);
+        await database.update(
+          'archives',
+          {'path': zipPath, 'is_archive': 1},
+          where: 'id = ?',
+          whereArgs: [bundle['id']],
+        );
       }
     }
+  }
 
-    if (archivedBundleIds.isEmpty) {
-      return await zipFile.exists() ? zipFile : null;
+  /// Returns a list of metadata for all archived ZIP files.
+  /// Each item contains:
+  /// - id: archive ID
+  /// - createdAt: timestamp of archive creation
+  /// - path: local path to the ZIP
+  /// - localAvailable: whether the ZIP file exists locally
+  /// - sampleCount, durationMs: optional info for display
+  static Future<List<({int id, String startedAt, String path, bool localAvailable, int sampleCount, int durationMs})>>
+  getZipMetaData() async {
+    final db = await _db;
+    // Query all archives where ZIP is ready
+    final rows = await db.query('archives', where: 'is_archive = ?', whereArgs: [1], orderBy: 'created_at ASC');
+    if (rows.isEmpty) return [];
+    // Map results to a clean list for the widget
+    final result = <({int id, String startedAt, String path, bool localAvailable, int sampleCount, int durationMs})>[];
+    for (final row in rows) {
+      final path = row['path'] as String;
+      final file = File(path);
+      final startedAt = DateTime.fromMillisecondsSinceEpoch(row['started_at'] as int);
+      result.add((
+        id: row['id'] as int,
+        // createdAt: createdAt.toIso8601String(),
+        startedAt: DateFormat('MMM d – hh:mm a').format(startedAt),
+        path: path,
+        localAvailable: file.existsSync(),
+        sampleCount: row['sample_count'] as int,
+        durationMs: row['duration_ms'] as int,
+      ));
     }
+    return result;
+  }
 
-    // Clean DB
-    await db.transaction((txn) async {
-      final ids = archivedBundleIds.join(',');
-      await txn.rawDelete('DELETE FROM sensor_bundles WHERE id IN ($ids)');
-    });
-
-    return await zipFile.exists() ? zipFile : null;
+  static Future<File?> getZipFile(int id) async {
+    final database = await _db;
+    final row = await database.query('archives', where: 'id = ?', whereArgs: [id]);
+    if (row.isEmpty) return null;
+    final archivePath = row.first['path'] as String?;
+    if (archivePath == null) return null;
+    final zipFile = await FileUtils.loadZipFile(archivePath);
+    return zipFile;
   }
 
   /// Get database statistics and bundle table schema (excluding JSON blobs)
   static Future<Map<String, dynamic>> getDatabaseStats() async {
-    final database = await _db;
+    final db = await _db;
+    int intValue(List<Map<String, Object?>> r) => (r.first.values.first as int?) ?? 0;
+    // ---- Raw pipeline state ----
+    final rawSamples = intValue(await db.rawQuery('SELECT COUNT(*) FROM sensor_samples'));
+    final pendingJson = intValue(await db.rawQuery('SELECT COUNT(*) FROM archives WHERE is_archive = 0'));
+    final zipped = intValue(await db.rawQuery('SELECT COUNT(*) FROM archives WHERE is_archive = 1'));
+    final unsynced = intValue(await db.rawQuery('SELECT COUNT(*) FROM archives WHERE is_synced = 0'));
+    final totalArchivedSamples = intValue(await db.rawQuery('SELECT COALESCE(SUM(sample_count), 0) FROM archives'));
+    // ---- Time diagnostics ----
+    final timeStats = await db.rawQuery('SELECT MIN(created_at) as oldest, MAX(created_at) as newest FROM archives');
+    final oldest = timeStats.first['oldest'];
+    final newest = timeStats.first['newest'];
+    // ---- Database size ----
+    final dbFile = File(db.path);
+    final dbSizeBytes = await dbFile.exists() ? await dbFile.length() : 0;
+    // ---- Archive disk usage ----
+    final archiveRows = await db.query('archives', columns: ['path'], where: 'local_available = 1');
+    int totalArchiveBytes = 0;
 
-    // Row counts
-    Future<int> count(String table) async {
-      final r = await database.rawQuery('SELECT COUNT(*) as c FROM $table');
-      return r.first['c'] as int;
+    for (final row in archiveRows) {
+      final path = row['path'] as String?;
+      if (path == null) continue;
+      final f = File(path);
+      if (await f.exists()) {
+        totalArchiveBytes += await f.length();
+      }
     }
 
-    final tableCounts = {
-      'sensor_samples': await count('sensor_samples'),
-      'sensor_bundles': await count('sensor_bundles'),
-      'time_label': await count('time_label'),
-      // 'session_archives': await count('session_archives'),
+    return {
+      'pipeline': {
+        'raw_samples_in_db': rawSamples,
+        'json_waiting_for_zip': pendingJson,
+        'zipped_archives': zipped,
+        'unsynced_archives': unsynced,
+        'total_samples_archived_lifetime': totalArchivedSamples,
+      },
+      'timeline': {'oldest_archive_created_at': oldest, 'newest_archive_created_at': newest},
+      'storage': {'database_bytes': dbSizeBytes, 'archives_total_bytes': totalArchiveBytes},
     };
-
-    // Bundle table schema (exclude json_data)
-    final List<Map<String, dynamic>> pragma = await database.rawQuery(
-      'PRAGMA table_info(sensor_bundles)',
-    );
-
-    final schema = pragma
-        .where((c) => c['name'] != 'json_data')
-        .map(
-          (c) => {
-            'name': c['name'],
-            'type': c['type'],
-            'nullable': c['notnull'] == 0,
-          },
-        )
-        .toList();
-
-    // final currentSamples = tableCounts['sensor_samples'] as int;
-    // final pendingBundles = tableCounts['sensor_bundles'] as int;
-
-    // final String sessionSource;
-    // if (currentSamples > 0) {
-    //   sessionSource = 'current';
-    // } else if (pendingBundles > 0) {
-    //   sessionSource = 'previous';
-    // } else {
-    //   sessionSource = 'none';
-    // }
-
-    // final recentArchives = await database.query(
-    //   'session_archives',
-    //   orderBy: 'created_at DESC',
-    //   limit: 10,
-    // );
-
-    // return {
-    //   'tables': tableCounts,
-    //   'sensor_bundles_schema': schema,
-    //   'session_summary': {
-    //     'source': sessionSource,
-    //     'current_samples': currentSamples,
-    //     'pending_previous_session_bundles': pendingBundles,
-    //     'archives_total': tableCounts['session_archives'],
-    //   },
-    //   'recent_archives': recentArchives,
-    // };
-    return {'tables': tableCounts, 'sensor_bundles_schema': schema};
   }
 }

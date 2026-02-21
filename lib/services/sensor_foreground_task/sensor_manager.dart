@@ -81,6 +81,7 @@ class SensorManager {
   // ─────────────────────────────
   // Sensor callbacks
   // ─────────────────────────────
+  double r3(double v) => (v * 1000).round() * 0.001;
 
   void _handleSensorData(
     int sensorType,   // now integer
@@ -89,8 +90,6 @@ class SensorManager {
     double z,
     int millisecondsSinceEpoch
   ) {
-    double r3(double v) => (v * 1000).round() * 0.001;
-
     _buffer.add(
       SensorSample(
         timestamp: millisecondsSinceEpoch,

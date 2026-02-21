@@ -12,7 +12,7 @@ void startSensorTaskCallback() {
   FlutterForegroundTask.setTaskHandler(SensorTaskHandler());
 }
 
-class SensorTaskHandler extends TaskHandler{
+class SensorTaskHandler extends TaskHandler {
   final buffer = SensorBuffer();
   final sensorManager = SensorManager();
   final state = StateBox.instance;
@@ -21,50 +21,51 @@ class SensorTaskHandler extends TaskHandler{
   bool isNimaz = false;
   bool startupCompleted = false;
   bool startedByDev = true;
-  bool isLoopEventDisabled = false; 
+  bool isLoopEventDisabled = false;
   bool stopInExecution = false;
   bool changeLabelInExecution = false;
 
   final String masgidEmoji = '🕌';
 
-  String debugLogReference(String functionName){
+  String debugLogReference(String functionName) {
     return "[ForegroundTaskHandler::$functionName]: ";
   }
-
 
   @override // START TASK
   Future<void> onStart(DateTime timestamp, TaskStarter starter) async {
     final drStart = debugLogReference('onStart');
     debugPrint(ColorCode.green('${drStart}Execution Started', true));
-    if (starter == TaskStarter.developer) await archiveCompression(taskText: 'Cleaning previos session data'); 
+    if (starter == TaskStarter.developer) {
+      await archiveCompression(taskText: 'Cleaning previos session data', endTaskText: 'Starting Gathering Session...');
+    }
 
-    sensorManager.subscribeAll(
-      samplingPeriod: Config.samplingPeriod,
-      buffer: buffer
-    );
+    sensorManager.subscribeAll(samplingPeriod: Config.samplingPeriod, buffer: buffer);
     debugPrint(ColorCode.yellow('${drStart}Subscribed to Sensors', true));
 
     final millisecondsSinceEpoch = DateTime.now().millisecondsSinceEpoch;
 
-    if (starter == TaskStarter.developer){
+    if (starter == TaskStarter.developer) {
       bundleId = await SensorDbController.getNextBundleId();
       await state.updateState(bundleId: bundleId, isNimaz: isNimaz);
-    } 
-    else {
+    } else {
       startedByDev = false;
       final bstate = await state.getState();
 
-      if (bstate.isNimaz != null){
+      if (bstate.isNimaz != null) {
         isNimaz = bstate.isNimaz!;
       } else {
-        debugPrint('$drStart${ColorCode.raw_red}[Hive Storage Error]: TaskStarter is (system) but hive did not have isNimaz, this variable cannot be recovered ${ColorCode.reset}');
+        debugPrint(
+          '$drStart${ColorCode.raw_red}[Hive Storage Error]: TaskStarter is (system) but hive did not have isNimaz, this variable cannot be recovered ${ColorCode.reset}',
+        );
         await state.updateState(isNimaz: isNimaz);
       }
 
-      if (bstate.bundleId != null)
-        { bundleId = bstate.bundleId!;}
-      else {
-        debugPrint('$drStart${ColorCode.raw_red}[Hive Storage Error]: TaskStarter is (system) but hive did not have bundleId ${ColorCode.reset}');
+      if (bstate.bundleId != null) {
+        bundleId = bstate.bundleId!;
+      } else {
+        debugPrint(
+          '$drStart${ColorCode.raw_red}[Hive Storage Error]: TaskStarter is (system) but hive did not have bundleId ${ColorCode.reset}',
+        );
         bundleId = await SensorDbController.getNextBundleId(recoverPreviouslyUsedId: true);
         await state.updateState(bundleId: bundleId);
       }
@@ -73,15 +74,17 @@ class SensorTaskHandler extends TaskHandler{
 
     await FlutterForegroundTask.updateService(
       notificationText:
-          '${isNimaz? masgidEmoji:""}Recording [${isNimaz? "Nimaz":"Random"}] Sensor Data${startedByDev? "" : "\nTask restarted by system"}',
+          '${isNimaz ? masgidEmoji : ""}Recording [${isNimaz ? "Nimaz" : "Random"}] Sensor Data${startedByDev ? "" : "\nTask restarted by system"}',
       notificationButtons: [
         NotificationButton(id: 'switch_label', text: 'Change Label'),
-        NotificationButton(id: 'stop', text: 'End Session')
+        NotificationButton(id: 'stop', text: 'End Session'),
       ],
     );
     debugPrint(ColorCode.yellow('${drStart}Notification Service Updated', true));
 
-    SensorDbController.insertTimeLabel(bundleId: bundleId, timestamp: millisecondsSinceEpoch, isNimaz: isNimaz).then((onValue){
+    SensorDbController.insertTimeLabel(bundleId: bundleId, timestamp: millisecondsSinceEpoch, isNimaz: isNimaz).then((
+      onValue,
+    ) {
       debugPrint(ColorCode.magenta('${drStart}Initial Timelabel Inserted in Async', true));
     });
 
@@ -94,95 +97,92 @@ class SensorTaskHandler extends TaskHandler{
     debugPrint(ColorCode.red('${drStart}Execution Ended', true));
   }
 
-
-
-
   @override // TASK LOOP EVENT
   Future<void> onRepeatEvent(DateTime timestamp) async {
-    if (isLoopEventDisabled){
-    debugPrint(ColorCode.cyan('${debugLogReference('onRepeatEvent')}[$timestamp]loop event disabled, returning', true));
-      return;}
+    if (!startupCompleted) {
+      debugPrint(ColorCode.red('${debugLogReference('onRepeatEvent')}startup incomplete:Execution Ended', true));
+      return;
+    }
+    if (isLoopEventDisabled) {
+      debugPrint(
+        ColorCode.cyan('${debugLogReference('onRepeatEvent')}[$timestamp]loop event disabled, returning', true),
+      );
+      return;
+    }
     debugPrint(ColorCode.green('${debugLogReference('onRepeatEvent')}[$timestamp]started', true));
     final List<SensorSample> samples = await buffer.takeAll();
     await SensorDbController.insertBatch(samples, bundleId: bundleId);
     debugPrint(ColorCode.magenta('${debugLogReference('onRepeatEvent')}[$timestamp]Batch Insertion Complete', true));
   }
 
-
-
-
   @override // NOTIFICATION BUTTON EVENTS
   void onNotificationButtonPressed(String id) async {
     super.onNotificationButtonPressed(id);
     final millisecondsSinceEpoch = DateTime.now().millisecondsSinceEpoch;
-    debugPrint(ColorCode.green('${debugLogReference('onNotificationButtonPressed')}[$millisecondsSinceEpoch][$id]started', true));
+    debugPrint(
+      ColorCode.green('${debugLogReference('onNotificationButtonPressed')}[$millisecondsSinceEpoch][$id]started', true),
+    );
 
     if (!startupCompleted) {
-        debugPrint(ColorCode.red('${debugLogReference('onNotificationButtonPressed')}startup incomplete:Execution Ended', true));
-        return;
-      }
-    
+      debugPrint(
+        ColorCode.red('${debugLogReference('onNotificationButtonPressed')}startup incomplete:Execution Ended', true),
+      );
+      return;
+    }
+
     debugPrint(ColorCode.yellow('${debugLogReference('onNotificationButtonPressed')}id: $id', true));
 
-    if (id == 'switch_label' && !changeLabelInExecution) 
-      { await _switchLabelCallback(millisecondsSinceEpoch); }
-    else if (id == 'stop' && !stopInExecution) 
-      {await _stopCallback();}
+    if (id == 'switch_label' && !changeLabelInExecution) {
+      await _switchLabelCallback(millisecondsSinceEpoch);
+    } else if (id == 'stop' && !stopInExecution) {
+      await _stopCallback();
+    }
 
     debugPrint(ColorCode.red('${debugLogReference('onNotificationButtonPressed')}Execution Ended', true));
   }
 
-
-
-
   // Notification button: switch_label
-  Future<void> _switchLabelCallback(int millisecondsSinceEpoch)async{
-    changeLabelInExecution=true;
+  Future<void> _switchLabelCallback(int millisecondsSinceEpoch) async {
+    changeLabelInExecution = true;
     isNimaz = !isNimaz;
     await FlutterForegroundTask.updateService(
       notificationText:
-          '${isNimaz? masgidEmoji:""}Recording [${isNimaz? "Nimaz":"Random"}] Sensor Data${startedByDev? "" : "\nTask restarted by system"}',
+          '${isNimaz ? masgidEmoji : ""}Recording [${isNimaz ? "Nimaz" : "Random"}] Sensor Data${startedByDev ? "" : "\nTask restarted by system"}',
     );
 
     await SensorDbController.insertTimeLabel(bundleId: bundleId, timestamp: millisecondsSinceEpoch, isNimaz: isNimaz);
-    await state.updateState(isNimaz:isNimaz);
-    changeLabelInExecution=false;
+    await state.updateState(isNimaz: isNimaz);
+    changeLabelInExecution = false;
   }
 
-
   // Notification button: stop
-  Future<void> _stopCallback()async{
-    stopInExecution=true;
+  Future<void> _stopCallback() async {
+    stopInExecution = true;
     isLoopEventDisabled = true;
     await FlutterForegroundTask.stopService();
   }
 
-
   @override // END TASK
   Future<void> onDestroy(DateTime timestamp, bool isTimeout) async {
+    debugPrint(ColorCode.green('${debugLogReference('onDestroy')}started', true));
     stopInExecution = true;
     isLoopEventDisabled = true;
     await sensorTaskEnder();
     await archiveCompression();
+    debugPrint(ColorCode.red('${debugLogReference('onDestroy')}Execution Ended', true));
   }
 
-
-  Future<void> sensorTaskEnder()async{
-    await FlutterForegroundTask.updateService(
-      notificationButtons: [],
-      notificationText: 'Cleaning up',
-    );
+  Future<void> sensorTaskEnder() async {
+    await FlutterForegroundTask.updateService(notificationButtons: [], notificationText: 'Cleaning up');
     await sensorManager.unsubscribeAll();
     await StateBox.instance.updateState(isRunning: false, startTimeMillis: null);
     final List<SensorSample> samples = await buffer.takeAll();
     await SensorDbController.insertBatch(samples, bundleId: bundleId);
   }
 
-
-  Future<void>archiveCompression({String taskText = 'Compressing Sensors Data'})async{
+  Future<void> archiveCompression({String taskText = 'Compressing Sensors Data', endTaskText = 'Done'}) async {
     await FlutterForegroundTask.updateService(notificationText: taskText);
-    await SensorDbController.bundleAndExportZip();
-    await FlutterForegroundTask.updateService(notificationText: 'Done');
+    await SensorDbController.bundleAndZipAllData();
+    await FlutterForegroundTask.updateService(notificationText: endTaskText);
   }
-
 }

@@ -42,162 +42,125 @@ class _DatabaseStatsDrawerState extends State<_DatabaseStatsDrawer> {
     _future = SensorDbController.getDatabaseStats();
   }
 
-  @override
-  Widget build(BuildContext context) {
-    return DraggableScrollableSheet(
-      expand: false,
-      initialChildSize: 0.4,
-      minChildSize: 0.25,
-      maxChildSize: 0.9,
-      builder: (context, scrollController) {
-        return Material(
-          child: FutureBuilder<Map<String, dynamic>>(
-            future: _future,
-            builder: (context, snapshot) {
-              if (snapshot.connectionState == ConnectionState.waiting) {
-                return const Center(child: CircularProgressIndicator());
-              }
+@override
+Widget build(BuildContext context) {
+  return DraggableScrollableSheet(
+    expand: false,
+    initialChildSize: 0.5,
+    minChildSize: 0.3,
+    maxChildSize: 0.95,
+    builder: (context, scrollController) {
+      return Material(
+        child: FutureBuilder<Map<String, dynamic>>(
+          future: _future,
+          builder: (context, snapshot) {
+            if (snapshot.connectionState == ConnectionState.waiting) {
+              return const Center(child: CircularProgressIndicator());
+            }
 
-              if (snapshot.hasError) {
-                return Padding(
-                  padding: const EdgeInsets.all(16),
-                  child: Text(
-                    'Failed to load stats:\n${snapshot.error}',
-                    style: const TextStyle(color: Colors.red),
-                  ),
-                );
-              }
-
-              final data = snapshot.data!;
-              final tables = data['tables'] as Map<String, dynamic>;
-              final schema = data['sensor_bundles_schema'] as List;
-              // final summary =
-              //     data['session_summary'] as Map<String, dynamic>? ?? {};
-              // final recentArchives =
-              //     data['recent_archives'] as List<dynamic>? ?? const [];
-              // final sessionSource =
-              //     (summary['source'] as String? ?? 'none').toUpperCase();
-
-              return ListView(
-                controller: scrollController,
+            if (snapshot.hasError) {
+              return Padding(
                 padding: const EdgeInsets.all(16),
-                children: [
-                  const Text(
-                    'Database Statistics',
-                    style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
-                  ),
-
-                  const SizedBox(height: 16),
-
-                  // const Text(
-                  //   'Session Status',
-                  //   style: TextStyle(fontWeight: FontWeight.w600),
-                  // ),
-                  // ListTile(
-                  //   dense: true,
-                  //   title: const Text('Stored data source'),
-                  //   trailing: Text(sessionSource),
-                  // ),
-                  // ListTile(
-                  //   dense: true,
-                  //   title: const Text('Current session samples'),
-                  //   trailing: Text(
-                  //     '${summary['current_samples'] ?? 0}',
-                  //   ),
-                  // ),
-                  // ListTile(
-                  //   dense: true,
-                  //   title: const Text('Previous session bundles'),
-                  //   trailing: Text(
-                  //     '${summary['pending_previous_session_bundles'] ?? 0}',
-                  //   ),
-                  // ),
-
-                  // const Divider(height: 32),
-
-                  const Text(
-                    'Table Row Counts',
-                    style: TextStyle(fontWeight: FontWeight.w600),
-                  ),
-                  ...tables.entries.map(
-                    (e) => ListTile(
-                      dense: true,
-                      title: Text(e.key),
-                      trailing: Text(e.value.toString()),
-                    ),
-                  ),
-
-                  // const Divider(height: 32),
-
-                  // const Text(
-                  //   'Recent Session Archives',
-                  //   style: TextStyle(fontWeight: FontWeight.w600),
-                  // ),
-                  // if (recentArchives.isEmpty)
-                  //   const ListTile(
-                  //     dense: true,
-                  //     title: Text('No archived sessions recorded'),
-                  //   )
-                  // else
-                  //   ...recentArchives.map((entry) {
-                  //     final archive = entry as Map<String, dynamic>;
-                  //     final sampleCount = archive['sample_count'] ?? 0;
-                  //     final durationMs = archive['duration_ms'] ?? 0;
-                  //     final jsonName = archive['json_name'] ?? '-';
-                  //     final syncStatus = archive['sync_status'] ?? 'pending';
-                  //     final localAvailable =
-                  //         (archive['local_available'] ?? 0) == 1;
-                  //     final createdAt = archive['created_at'] as int?;
-                  //     final createdAtText = createdAt == null
-                  //         ? '-'
-                  //         : DateTime.fromMillisecondsSinceEpoch(createdAt)
-                  //               .toLocal()
-                  //               .toString();
-
-                  //     return ListTile(
-                  //       dense: true,
-                  //       title: Text(archive['title']?.toString() ?? 'Session'),
-                  //       subtitle: Text(
-                  //         'samples: $sampleCount | duration: ${_formatDuration(durationMs)}\njson: $jsonName\nsync: $syncStatus | local: ${localAvailable ? 'yes' : 'no'}\ncreated: $createdAtText',
-                  //       ),
-                  //       isThreeLine: true,
-                  //     );
-                  //   }),
-
-                  const Divider(height: 32),
-
-                  const Text(
-                    'sensor_bundles Schema',
-                    style: TextStyle(fontWeight: FontWeight.w600),
-                  ),
-                  ...schema.map(
-                    (c) => ListTile(
-                      dense: true,
-                      title: Text(c['name']),
-                      subtitle: Text(c['type']),
-                      trailing: Text(
-                        c['nullable'] ? 'NULL' : 'NOT NULL',
-                        style: TextStyle(
-                          color: c['nullable'] ? Colors.grey : Colors.green,
-                        ),
-                      ),
-                    ),
-                  ),
-                ],
+                child: Text(
+                  'Failed to load stats:\n${snapshot.error}',
+                  style: const TextStyle(color: Colors.red),
+                ),
               );
-            },
-          ),
-        );
-      },
-    );
-  }
+            }
 
-  // String _formatDuration(Object? value) {
-  //   final ms = value is num ? value.toInt() : 0;
-  //   final totalSeconds = ms ~/ 1000;
-  //   final hours = totalSeconds ~/ 3600;
-  //   final minutes = (totalSeconds % 3600) ~/ 60;
-  //   final seconds = totalSeconds % 60;
-  //   return '${hours.toString().padLeft(2, '0')}:${minutes.toString().padLeft(2, '0')}:${seconds.toString().padLeft(2, '0')}';
-  // }
+            final data = snapshot.data!;
+            final pipeline = data['pipeline'] as Map<String, dynamic>;
+            final timeline = data['timeline'] as Map<String, dynamic>;
+            final storage = data['storage'] as Map<String, dynamic>;
+
+            String formatBytes(int bytes) {
+              const kb = 1024;
+              const mb = 1024 * 1024;
+              if (bytes >= mb) {
+                return '${(bytes / mb).toStringAsFixed(2)} MB';
+              } else if (bytes >= kb) {
+                return '${(bytes / kb).toStringAsFixed(2)} KB';
+              }
+              return '$bytes B';
+            }
+
+            return ListView(
+              controller: scrollController,
+              padding: const EdgeInsets.all(16),
+              children: [
+
+                const Text(
+                  'Database Health',
+                  style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+                ),
+
+                const SizedBox(height: 16),
+
+                const Text(
+                  'Pipeline Status',
+                  style: TextStyle(fontWeight: FontWeight.w600),
+                ),
+
+                ...pipeline.entries.map(
+                  (e) => ListTile(
+                    dense: true,
+                    title: Text(e.key),
+                    trailing: Text(e.value.toString()),
+                  ),
+                ),
+
+                const Divider(height: 32),
+
+                const Text(
+                  'Timeline',
+                  style: TextStyle(fontWeight: FontWeight.w600),
+                ),
+
+                ListTile(
+                  dense: true,
+                  title: const Text('Oldest archive'),
+                  trailing: Text(
+                    timeline['oldest_archive_created_at']?.toString() ?? '—',
+                  ),
+                ),
+
+                ListTile(
+                  dense: true,
+                  title: const Text('Newest archive'),
+                  trailing: Text(
+                    timeline['newest_archive_created_at']?.toString() ?? '—',
+                  ),
+                ),
+
+                const Divider(height: 32),
+
+                const Text(
+                  'Storage Usage',
+                  style: TextStyle(fontWeight: FontWeight.w600),
+                ),
+
+                ListTile(
+                  dense: true,
+                  title: const Text('Database file size'),
+                  trailing: Text(
+                    formatBytes(storage['database_bytes'] as int),
+                  ),
+                ),
+
+                ListTile(
+                  dense: true,
+                  title: const Text('Archives total size'),
+                  trailing: Text(
+                    formatBytes(storage['archives_total_bytes'] as int),
+                  ),
+                ),
+              ],
+            );
+          },
+        ),
+      );
+    },
+  );
+}
+
 }
