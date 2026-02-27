@@ -1,24 +1,31 @@
+import 'package:android_alarm_manager_plus/android_alarm_manager_plus.dart';
+import 'package:hive_flutter/hive_flutter.dart';
 import 'package:path/path.dart' as p;
 import 'package:path_provider/path_provider.dart';
 import 'package:flutter/material.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
+import 'dart:math';
+import 'privated_file.dart';
 
 class Config {
   static const String gitUser = 'Holy-Warrior';
   static const String gitRepo = 'auto-silent-gathering';
-  static const String gitCurentRelease = "v3.0.0";
+  static const String gitCurentRelease = "v3.4.3";
   static const bool gitFilterOutPrerelease = true;
+
+  static const String supabaseUrl = 'https://howuvaqodqhxbvbxxpzn.supabase.co';
+  // Supabase anon key is stored in privated_file.dart to keep it out of version control
+  static String get supabaseAnonKey => supabaseAnonKeyFromPrivated;
 
   static const Duration samplingPeriod = Duration(milliseconds: 20);
   static const foregroundActionRepeatInterval = 10000; //10 seconds
   static const int executionOffsetMinutes = -10;
 
-  // static const zipArchivePath = "archive.path";
-
   static Future<String> zipArchivePath() async {
     final dir = await getApplicationDocumentsDirectory();
     return p.join(dir.path, "archive.zip");
   }
-  
+
   static TimeOfDay toExecutionTime(TimeOfDay time) {
     return convertTime(time, executionOffsetMinutes);
   }
@@ -26,8 +33,7 @@ class Config {
   static TimeOfDay convertTime(TimeOfDay time, int offsetMinutes) {
     final totalMinutes = time.hour * 60 + time.minute + offsetMinutes;
 
-    final normalized =
-        (totalMinutes % (24 * 60) + (24 * 60)) % (24 * 60);
+    final normalized = (totalMinutes % (24 * 60) + (24 * 60)) % (24 * 60);
 
     final newHour = normalized ~/ 60;
     final newMinute = normalized % 60;
@@ -35,14 +41,41 @@ class Config {
     return TimeOfDay(hour: newHour, minute: newMinute);
   }
 
-}
-// class SensorInterval {
-//   static const normalInterval = Duration(milliseconds: 200);
-//   static const uiInterval = Duration(milliseconds: 66, microseconds: 667);
-//   static const gameInterval = Duration(milliseconds: 20);
-//   static const fastestInterval = Duration.zero;
-// }
+  static Future<void> initilizeAllMainEntry() async {
+    WidgetsFlutterBinding.ensureInitialized();
+    await Hive.initFlutter();
+    await AndroidAlarmManager.initialize();
+    await Supabase.initialize(url: supabaseUrl, anonKey: supabaseAnonKey);
+  }
 
+  String generateCodename() {
+    const codenames = [
+      "Banana",
+      "Vanilla",
+      "Mango",
+      "Falcon",
+      "Orion",
+      "Quartz",
+      "Nebula",
+      "Comet",
+      "Rocket",
+      "Titan",
+      "Nova",
+      "Pixel",
+      "Cobalt",
+      "Saffron",
+      "Nimbus",
+      "Echo",
+      "Blaze",
+      "Atlas",
+      "Zodiac",
+      "Lunar",
+    ];
+
+    final random = Random();
+    return codenames[random.nextInt(codenames.length)];
+  }
+}
 // ignore_for_file: constant_identifier_names
 class ColorCode {
   // Reset

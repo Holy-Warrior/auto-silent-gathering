@@ -165,13 +165,16 @@ class SensorDbController {
           await file.delete();
         }
       }
-    // ignore: empty_catchess
-    } catch (e) {debugPrint(ColorCode.red('[SensorDbController::deleteArchive]$e',true));}
-    await db.delete('archives',  where: 'id = ?', whereArgs: [id]);
+      // ignore: empty_catchess
+    } catch (e) {
+      debugPrint(ColorCode.red('[SensorDbController::deleteArchive]$e', true));
+    }
+    await db.delete('archives', where: 'id = ?', whereArgs: [id]);
   }
 
-  static Future<void> bundleAndZipAllData() async {
+  static Future<List<int>> bundleAndZipAllData() async {
     final database = await _db;
+    final List<int> archiveIds = [];
     await _bundleAndClearSamples(); // making sure bundles are ready
 
     var rows = await database.query('archives', where: 'is_archive = ?', whereArgs: [0]);
@@ -184,8 +187,10 @@ class SensorDbController {
           where: 'id = ?',
           whereArgs: [bundle['id']],
         );
+        archiveIds.add(bundle['id'] as int);
       }
     }
+    return archiveIds;
   }
 
   /// Returns a list of metadata for all archived ZIP files.

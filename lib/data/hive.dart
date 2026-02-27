@@ -1,3 +1,4 @@
+import 'package:asg/data/constants/config.dart';
 import 'package:hive_flutter/hive_flutter.dart';
 import 'package:asg/screens/sensor_manager/widgets/mode_toggle.dart';
 
@@ -16,12 +17,7 @@ class StateBox {
   }
 
   // Update state safely
-  Future<void> updateState({
-    int? bundleId,
-    bool? isNimaz,
-    bool? isRunning,
-    int? startTimeMillis,
-  }) async {
+  Future<void> updateState({int? bundleId, bool? isNimaz, bool? isRunning, int? startTimeMillis}) async {
     if (!stateBoxInitialized) await _init();
 
     if (bundleId != null) _pendingUpdates['bundleId'] = bundleId;
@@ -48,9 +44,7 @@ class StateBox {
 
   // ==================== [ Schedules] ====================
 
-  Future<void> overwriteSchedules(
-    Map<String, Map<String, dynamic>> schedules,
-  ) async {
+  Future<void> overwriteSchedules(Map<String, Map<String, dynamic>> schedules) async {
     if (!stateBoxInitialized) await _init();
 
     await _box.put('schedules', schedules);
@@ -59,16 +53,10 @@ class StateBox {
 
   Future<Map<String, Map<String, dynamic>>> getSchedules() async {
     if (!stateBoxInitialized) await _init();
-
     final raw = _box.get('schedules');
-
     if (raw == null) return {};
-
     return Map<String, Map<String, dynamic>>.from(
-      (raw as Map).map(
-        (key, value) =>
-            MapEntry(key as String, Map<String, dynamic>.from(value as Map)),
-      ),
+      (raw as Map).map((key, value) => MapEntry(key as String, Map<String, dynamic>.from(value as Map))),
     );
   }
 
@@ -87,6 +75,59 @@ class StateBox {
 
     return value == 'schedule' ? Mode.schedule : Mode.manual;
   }
+
+  // ==================== [ Data Upload Quene] ====================
+  Future<void> addToUploadQueue(int epochTime, int archiveId) async {
+    if (!stateBoxInitialized) await _init();
+    final raw = _box.get('uploadQueue');
+    final Map<int, int> queue = raw != null ? Map<int, int>.from(raw as Map) : <int, int>{};
+    queue[archiveId] = epochTime;
+    await _box.put('uploadQueue', queue);
+    await _box.flush();
+  }
+
+  /// Removes the given archive ID from the upload queue.
+  Future<void> removeFromUploadQueue(int archiveId) async {
+    if (!stateBoxInitialized) await _init();
+    final raw = _box.get('uploadQueue');
+    final Map<int, int> queue = raw != null ? Map<int, int>.from(raw as Map) : <int, int>{};
+    queue.remove(archiveId);
+    await _box.put('uploadQueue', queue);
+    await _box.flush();
+  }
+
+  /// Retrieves the current upload queue as a map of archive IDs to their corresponding epoch times.
+  Future<List<({int archiveId, int epochTime})>> getUploadQueue() async {
+    if (!stateBoxInitialized) await _init();
+    final raw = _box.get('uploadQueue');
+    if (raw == null) return [];
+    final Map<int, int> queue = Map<int, int>.from(raw as Map);
+    return queue.entries.map((e) => (archiveId: e.key, epochTime: e.value)).toList();
+  }
+
+  Future<int?> currentUploadArchiveId(int? setArchiveId) async {
+    if (!stateBoxInitialized) await _init();
+    if (setArchiveId == null) {
+      setArchiveId = _box.get('currentUploadArchiveId', defaultValue: null) as int?;
+      await _box.put('currentUploadArchiveId', null);
+      return setArchiveId;
+    }
+    await _box.put('currentUploadArchiveId', setArchiveId);
+    return setArchiveId;
+  }
+
+  // ==================== [ Device Codename ] ====================
+  Future<String> getDeviceCodename() async {
+    if (!stateBoxInitialized) await _init();
+    final codename = _box.get('deviceCodename');
+    if (codename == null) {
+      final newCodename = Config().generateCodename();
+      await _box.put('deviceCodename', newCodename);
+      await _box.flush();
+      return newCodename;
+    }
+    return codename;
+  }
 }
 
 class ServiceState {
@@ -95,10 +136,5 @@ class ServiceState {
   final int? bundleId;
   final bool? isNimaz;
 
-  ServiceState({
-    this.bundleId,
-    this.isNimaz,
-    this.startTimeMillis,
-    this.isRunning,
-  });
+  ServiceState({this.bundleId, this.isNimaz, this.startTimeMillis, this.isRunning});
 }

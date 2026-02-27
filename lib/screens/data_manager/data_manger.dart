@@ -125,7 +125,7 @@ class _StateDataManager extends State<DataManager> {
 
                       debugPrint(ColorCode.green('Archives found$items', true));
                       return SizedBox(
-                        height: 300, // limit height if inside Column
+                        height: 500, // limit height if inside Column
                         child: ListView.builder(
                           itemCount: items.length,
                           itemBuilder: (context, index) {
