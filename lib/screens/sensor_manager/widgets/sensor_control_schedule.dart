@@ -1,3 +1,4 @@
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:asg/data/constants/config.dart';
 
@@ -37,11 +38,7 @@ class ScheduleRow extends StatelessWidget {
 
         TextButton(
           onPressed: onPickTime,
-          child: Text(
-            MaterialLocalizations.of(
-              context,
-            ).formatTimeOfDay(displayTime, alwaysUse24HourFormat: false),
-          ),
+          child: Text(MaterialLocalizations.of(context).formatTimeOfDay(displayTime, alwaysUse24HourFormat: false)),
         ),
 
         if (showDelete)
@@ -55,16 +52,11 @@ class ScheduleRow extends StatelessWidget {
 }
 
 class SensorControlSchedule extends StatefulWidget {
-  const SensorControlSchedule({
-    super.key,
-    required this.onLoadSchedules,
-    required this.onSchedulesUpdated,
-  });
+  const SensorControlSchedule({super.key, required this.onLoadSchedules, required this.onSchedulesUpdated});
 
   final Future<Map<String, Map<String, dynamic>>> Function() onLoadSchedules;
 
-  final Future<void> Function(Map<String, Map<String, dynamic>> schedules)
-  onSchedulesUpdated;
+  final Future<void> Function(Map<String, Map<String, dynamic>> schedules) onSchedulesUpdated;
 
   @override
   State<SensorControlSchedule> createState() => _SensorControlScheduleState();
@@ -91,10 +83,7 @@ class _SensorControlScheduleState extends State<SensorControlSchedule> {
         return ScheduleItem(
           name: e.key,
           enabled: e.value['enabled'] as bool? ?? true,
-          time: TimeOfDay(
-            hour: int.parse(timeParts[0]),
-            minute: int.parse(timeParts[1]),
-          ),
+          time: TimeOfDay(hour: int.parse(timeParts[0]), minute: int.parse(timeParts[1])),
         );
       }).toList();
     });
@@ -109,8 +98,7 @@ class _SensorControlScheduleState extends State<SensorControlSchedule> {
       builder: (context) {
         return StatefulBuilder(
           builder: (context, setState) {
-            final canAdd =
-                titleController.text.trim().isNotEmpty && selectedTime != null;
+            final canAdd = titleController.text.trim().isNotEmpty && selectedTime != null;
 
             return AlertDialog(
               title: const Text('Add schedule'),
@@ -130,9 +118,7 @@ class _SensorControlScheduleState extends State<SensorControlSchedule> {
                         child: Text(
                           selectedTime == null
                               ? 'Select time'
-                              : MaterialLocalizations.of(
-                                  context,
-                                ).formatTimeOfDay(selectedTime!),
+                              : MaterialLocalizations.of(context).formatTimeOfDay(selectedTime!),
                         ),
                       ),
                       TextButton(
@@ -152,14 +138,8 @@ class _SensorControlScheduleState extends State<SensorControlSchedule> {
                 ],
               ),
               actions: [
-                TextButton(
-                  onPressed: () => Navigator.pop(context, false),
-                  child: const Text('Cancel'),
-                ),
-                ElevatedButton(
-                  onPressed: canAdd ? () => Navigator.pop(context, true) : null,
-                  child: const Text('Add'),
-                ),
+                TextButton(onPressed: () => Navigator.pop(context, false), child: const Text('Cancel')),
+                ElevatedButton(onPressed: canAdd ? () => Navigator.pop(context, true) : null, child: const Text('Add')),
               ],
             );
           },
@@ -169,9 +149,7 @@ class _SensorControlScheduleState extends State<SensorControlSchedule> {
 
     if (result == true) {
       setState(() {
-        items.add(
-          ScheduleItem(name: titleController.text.trim(), time: selectedTime!),
-        );
+        items.add(ScheduleItem(name: titleController.text.trim(), time: selectedTime!));
       });
       _notifyUpdate();
     }
@@ -212,33 +190,28 @@ class _SensorControlScheduleState extends State<SensorControlSchedule> {
           padding: const EdgeInsets.all(8),
           child: Row(
             children: [
-              const Text(
-                "Edit mode",
-                style: TextStyle(fontWeight: FontWeight.w500),
-              ),
+              const Text("Edit mode", style: TextStyle(fontWeight: FontWeight.w500)),
               const SizedBox(width: 8),
-              Switch(
-                value: editMode,
-                onChanged: (v) => setState(() => editMode = v),
-              ),
+              Switch(value: editMode, onChanged: (v) => setState(() => editMode = v)),
             ],
           ),
         ),
-        Row(
-          children: [
-            Text(
-              showExecutionTime?"Execution Time (view only)":"Original Nimaz Time",
-              style: const TextStyle(fontWeight: FontWeight.w500),
-            ),
-            const SizedBox(width: 8),
-            Switch(
-              value: showExecutionTime,
-              onChanged: (v) {
-                setState(() => showExecutionTime = v);
-              },
-            ),
-          ],
-        ),
+        if (kDebugMode)
+          Row(
+            children: [
+              Text(
+                showExecutionTime ? "Execution Time (view only)" : "Original Nimaz Time",
+                style: const TextStyle(fontWeight: FontWeight.w500),
+              ),
+              const SizedBox(width: 8),
+              Switch(
+                value: showExecutionTime,
+                onChanged: (v) {
+                  setState(() => showExecutionTime = v);
+                },
+              ),
+            ],
+          ),
 
         const Divider(),
 
@@ -273,14 +246,9 @@ class _SensorControlScheduleState extends State<SensorControlSchedule> {
         // Add more
         Padding(
           padding: const EdgeInsets.all(12),
-          child: ElevatedButton.icon(
-            onPressed: addItem,
-            icon: const Icon(Icons.add),
-            label: const Text("Add more"),
-          ),
+          child: ElevatedButton.icon(onPressed: addItem, icon: const Icon(Icons.add), label: const Text("Add more")),
         ),
       ],
     );
   }
 }
-

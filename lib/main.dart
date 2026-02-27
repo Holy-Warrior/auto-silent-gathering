@@ -1,12 +1,15 @@
+import 'package:asg/data/constants/config.dart';
 import 'package:flutter/material.dart';
 import 'package:hive_flutter/hive_flutter.dart';
 import 'screens/home_screen.dart';
 import 'package:android_alarm_manager_plus/android_alarm_manager_plus.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
   await Hive.initFlutter();
   await AndroidAlarmManager.initialize();
+  await Supabase.initialize(url: Config.supabaseUrl, anonKey: Config.supabaseAnonKey);
   runApp(const App());
 }
 
@@ -28,22 +31,16 @@ class App extends StatelessWidget {
   }
 }
 
-
-ThemeData lightTheme (){
+ThemeData lightTheme() {
   return ThemeData(
-        colorScheme: ColorScheme.fromSeed(
-          seedColor: Colors.blue,
-          brightness: Brightness.light,
-        ),
-        useMaterial3: true,
-      );
+    colorScheme: ColorScheme.fromSeed(seedColor: Colors.blue, brightness: Brightness.light),
+    useMaterial3: true,
+  );
 }
-ThemeData darkTheme (){
+
+ThemeData darkTheme() {
   return ThemeData(
-        colorScheme: ColorScheme.fromSeed(
-          seedColor: Colors.blue,
-          brightness: Brightness.dark,
-        ),
-        useMaterial3: true,
-      );
+    colorScheme: ColorScheme.fromSeed(seedColor: Colors.blue, brightness: Brightness.dark),
+    useMaterial3: true,
+  );
 }

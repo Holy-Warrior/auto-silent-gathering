@@ -1,12 +1,20 @@
+import 'package:android_alarm_manager_plus/android_alarm_manager_plus.dart';
+import 'package:hive_flutter/hive_flutter.dart';
 import 'package:path/path.dart' as p;
 import 'package:path_provider/path_provider.dart';
 import 'package:flutter/material.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
+import 'dart:math';
 
 class Config {
   static const String gitUser = 'Holy-Warrior';
   static const String gitRepo = 'auto-silent-gathering';
-  static const String gitCurentRelease = "v3.0.0";
+  static const String gitCurentRelease = "v3.4.3";
   static const bool gitFilterOutPrerelease = true;
+
+  static const String supabaseUrl = 'https://howuvaqodqhxbvbxxpzn.supabase.co';
+  static const String supabaseAnonKey =
+      'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imhvd3V2YXFvZHFoeGJ2Ynh4cHpuIiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc3MTgzMDkzNywiZXhwIjoyMDg3NDA2OTM3fQ.QzadM7pydZ4nFOgvTF6Z5kqb2LIsoFsVo6ZEK1dvvUw';
 
   static const Duration samplingPeriod = Duration(milliseconds: 20);
   static const foregroundActionRepeatInterval = 10000; //10 seconds
@@ -18,7 +26,7 @@ class Config {
     final dir = await getApplicationDocumentsDirectory();
     return p.join(dir.path, "archive.zip");
   }
-  
+
   static TimeOfDay toExecutionTime(TimeOfDay time) {
     return convertTime(time, executionOffsetMinutes);
   }
@@ -26,8 +34,7 @@ class Config {
   static TimeOfDay convertTime(TimeOfDay time, int offsetMinutes) {
     final totalMinutes = time.hour * 60 + time.minute + offsetMinutes;
 
-    final normalized =
-        (totalMinutes % (24 * 60) + (24 * 60)) % (24 * 60);
+    final normalized = (totalMinutes % (24 * 60) + (24 * 60)) % (24 * 60);
 
     final newHour = normalized ~/ 60;
     final newMinute = normalized % 60;
@@ -35,6 +42,40 @@ class Config {
     return TimeOfDay(hour: newHour, minute: newMinute);
   }
 
+  static Future<void> initilizeAllMainEntry() async {
+    WidgetsFlutterBinding.ensureInitialized();
+    await Hive.initFlutter();
+    await AndroidAlarmManager.initialize();
+    await Supabase.initialize(url: supabaseUrl, anonKey: supabaseAnonKey);
+  }
+
+  String generateCodename() {
+    const codenames = [
+      "Banana",
+      "Vanilla",
+      "Mango",
+      "Falcon",
+      "Orion",
+      "Quartz",
+      "Nebula",
+      "Comet",
+      "Rocket",
+      "Titan",
+      "Nova",
+      "Pixel",
+      "Cobalt",
+      "Saffron",
+      "Nimbus",
+      "Echo",
+      "Blaze",
+      "Atlas",
+      "Zodiac",
+      "Lunar",
+    ];
+
+    final random = Random();
+    return codenames[random.nextInt(codenames.length)];
+  }
 }
 // class SensorInterval {
 //   static const normalInterval = Duration(milliseconds: 200);

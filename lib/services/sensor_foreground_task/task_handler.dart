@@ -1,5 +1,6 @@
 import 'package:asg/data/db/models/sensor_sample.dart';
 import 'package:asg/data/hive.dart';
+import 'package:asg/services/data_sync_manager/data_sync_alarm_manager.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter_foreground_task/flutter_foreground_task.dart';
 import 'package:asg/services/sensor_foreground_task/sensor_buffer.dart';
@@ -8,7 +9,8 @@ import 'package:asg/data/constants/config.dart';
 import 'package:asg/data/db/controllers/sensor_db_controller.dart';
 
 @pragma('vm:entry-point')
-void startSensorTaskCallback() {
+void startSensorTaskCallback() async {
+  await Config.initilizeAllMainEntry();
   FlutterForegroundTask.setTaskHandler(SensorTaskHandler());
 }
 
@@ -182,7 +184,8 @@ class SensorTaskHandler extends TaskHandler {
 
   Future<void> archiveCompression({String taskText = 'Compressing Sensors Data', endTaskText = 'Done'}) async {
     await FlutterForegroundTask.updateService(notificationText: taskText);
-    await SensorDbController.bundleAndZipAllData();
+    final archiveIds = await SensorDbController.bundleAndZipAllData();
+    await DataSyncAlarmManagerService.scheduleArchiveUploadTasks(archiveIds);
     await FlutterForegroundTask.updateService(notificationText: endTaskText);
   }
 }

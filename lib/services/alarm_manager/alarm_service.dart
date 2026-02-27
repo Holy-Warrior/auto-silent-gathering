@@ -6,6 +6,7 @@ import 'package:asg/data/constants/config.dart';
 
 @pragma('vm:entry-point')
 void _alarmCallback() async {
+  await Config.initilizeAllMainEntry();
   final state = await StateBox.instance.getState();
   if (state.isRunning == true) return;
   await initForegroundService();
@@ -14,8 +15,7 @@ void _alarmCallback() async {
 class AlarmManagerService {
   /// Cancel alarms for given schedules
   /// If schedules is empty, nothing happens
-  static Future<void> cancelSchedules(
-      Map<String, Map<String, dynamic>> schedules) async {
+  static Future<void> cancelSchedules(Map<String, Map<String, dynamic>> schedules) async {
     for (final key in schedules.keys) {
       await AndroidAlarmManager.cancel(_alarmIdFor(key));
       debugPrint('Cancelled alarm: $key');
@@ -24,8 +24,7 @@ class AlarmManagerService {
 
   /// Activate alarms based on the schedule data
   /// Only schedules with 'enabled: true' will be scheduled
-  static Future<void> activateSchedules(
-      Map<String, Map<String, dynamic>> schedules) async {
+  static Future<void> activateSchedules(Map<String, Map<String, dynamic>> schedules) async {
     final now = DateTime.now();
 
     for (final entry in schedules.entries) {
@@ -41,23 +40,17 @@ class AlarmManagerService {
       if (parts.length != 2) continue;
 
       final hour = int.tryParse(parts[0]);
-final minute = int.tryParse(parts[1]);
-if (hour == null || minute == null) continue;
+      final minute = int.tryParse(parts[1]);
+      if (hour == null || minute == null) continue;
 
-// Original Nimaz time
-final originalTime = TimeOfDay(hour: hour, minute: minute);
+      // Original Nimaz time
+      final originalTime = TimeOfDay(hour: hour, minute: minute);
 
-// Convert to execution time using Config
-final executionTime = Config.toExecutionTime(originalTime);
+      // Convert to execution time using Config
+      final executionTime = Config.toExecutionTime(originalTime);
 
-// Build scheduled DateTime using execution time
-var scheduled = DateTime(
-  now.year,
-  now.month,
-  now.day,
-  executionTime.hour,
-  executionTime.minute,
-);
+      // Build scheduled DateTime using execution time
+      var scheduled = DateTime(now.year, now.month, now.day, executionTime.hour, executionTime.minute);
 
       if (scheduled.isBefore(now)) {
         scheduled = scheduled.add(const Duration(days: 1));
