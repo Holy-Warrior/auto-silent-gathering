@@ -14,7 +14,7 @@ void dPrint(String message) {
 
 Future<bool> hasInternet() async {
   final connectivityResult = await Connectivity().checkConnectivity();
-  if (connectivityResult == ConnectivityResult.none) return false;
+  if (connectivityResult.contains(ConnectivityResult.none)) return false;
   return await InternetConnectionChecker().hasConnection;
 }
 

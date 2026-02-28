@@ -13,7 +13,7 @@ class SensorManager extends StatefulWidget {
 }
 
 class _SensorManagerState extends State<SensorManager> {
-  Mode _mode = Mode.manual;
+  Mode _mode = Mode.schedule;
   bool _loading = true;
 
   @override

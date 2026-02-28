@@ -71,7 +71,7 @@ class StateBox {
   Future<Mode> getSensorMode() async {
     if (!stateBoxInitialized) await _init();
 
-    final value = _box.get('sensorMode', defaultValue: 'manual');
+    final value = _box.get('sensorMode', defaultValue: 'schedule');
 
     return value == 'schedule' ? Mode.schedule : Mode.manual;
   }

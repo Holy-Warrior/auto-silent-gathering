@@ -10,7 +10,7 @@ import 'privated_file.dart';
 class Config {
   static const String gitUser = 'Holy-Warrior';
   static const String gitRepo = 'auto-silent-gathering';
-  static const String gitCurentRelease = "v3.4.3";
+  static const String gitCurentRelease = "v3.4.4";
   static const bool gitFilterOutPrerelease = true;
 
   static const String supabaseUrl = 'https://howuvaqodqhxbvbxxpzn.supabase.co';
