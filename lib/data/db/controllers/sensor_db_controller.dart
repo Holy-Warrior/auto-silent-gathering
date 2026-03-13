@@ -31,6 +31,13 @@ class SensorDbController {
     }, conflictAlgorithm: ConflictAlgorithm.ignore);
   }
 
+  /// Fetch time label list
+  static Future<List<Map<String, dynamic>>> getTimeLabels(int bundleId) async {
+    final database = await _db;
+    final timeLabels = await database.query('time_label', where: 'bundle_id = ?', whereArgs: [bundleId]);
+    return timeLabels;
+  }
+
   /// Insert a new crash recovery record
   static Future<void> insertCrashRecoveryRecord({required int bundleId, required int timestamp}) async {
     final database = await _db;

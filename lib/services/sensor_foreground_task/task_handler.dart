@@ -155,6 +155,56 @@ class SensorTaskHandler extends TaskHandler {
     await SensorDbController.insertTimeLabel(bundleId: bundleId, timestamp: millisecondsSinceEpoch, isNimaz: isNimaz);
     await state.updateState(isNimaz: isNimaz);
     changeLabelInExecution = false;
+    checkTimeToStop();
+  }
+
+  Future<void> checkTimeToStop()async{
+    final timeLabels = await SensorDbController.getTimeLabels(bundleId);
+    if (timeLabels.isEmpty) return;
+    if (timeLabels.length < 3) return;
+    if (timeLabels.length > 3) return;
+
+    final startDuration = durationBetween(
+      timeLabels[0]['timestamp'] as int,
+      timeLabels[1]['timestamp'] as int,
+    );
+
+    final nimazDuration = durationBetween(
+      timeLabels[1]['timestamp'] as int,
+      timeLabels[2]['timestamp'] as int,
+    );
+    
+
+
+
+
+    // timeLabels
+    // DateTime.fromMillisecondsSinceEpoch(millisecondsSinceEpoch);
+
+  }
+
+  Future<void> verifyTimeout() async{
+    final timeLabels = await SensorDbController.getTimeLabels(bundleId);
+    if (timeLabels.isEmpty) return;
+    if (timeLabels.length != 1) return;
+    final duration = durationBetween(
+      timeLabels.first['timestamp'] as int,
+      DateTime.now().millisecondsSinceEpoch
+      );
+
+    const timeoutDuration = Duration(minutes: 25); // change as needed
+
+    if (duration >= timeoutDuration) {
+      // Timeout logic here
+      print("Timeout reached");
+    }
+  }
+
+  Duration durationBetween(int start, int end){
+    final startTime = DateTime.fromMillisecondsSinceEpoch(start);
+    final endTime = DateTime.fromMillisecondsSinceEpoch(end);
+    final difference = endTime.difference(startTime);
+    return difference;
   }
 
   // Notification button: stop
